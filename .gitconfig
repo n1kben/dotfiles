@@ -1,0 +1,28 @@
+[alias]
+  stage = !git add
+  unstage = !git reset
+  staged = !git diff --cached
+  undo = !git reset --soft HEAD~1
+  pop = !git stash pop
+  amend = !git commit --amend --no-edit
+  squash = !git rebase -i master
+  conflicts = !git diff --name-only --diff-filter=U | uniq
+  is-rebasing = !if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then echo rebase; fi
+  is-merging = !if [ -f .git/MERGE_HEAD ]; then echo merge; fi
+[include]
+  path = ~/.gitconfig-private
+[includeIf "gitdir:~/Developer/Work/"]
+  path = ~/.gitconfig-work
+[push]
+  default = simple
+[core]
+  excludesfile = ~/.gitignore
+  fileMode = false
+  editor = nvim
+[init]
+  defaultBranch = main
+[rerere]
+  enabled = true
+  autoUpdate = true
+[branch]
+  sort = -committerdate
