@@ -4,6 +4,17 @@
 # Zsh autocomplete
 # source $(brew --prefix)/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh
 
+# Brew
+brew() {
+  # Run brew normally
+  command brew "$@"
+
+  # If it's an install command, dump Brewfile after
+  if [[ "$1" == "install" || "$1" == "uninstall" || "$1" == "upgrade" ]]; then
+    command brew bundle dump --force --file="$HOME/dotfiles/Brewfile"
+  fi
+}
+
 # Git
 export GIT_MERGE_AUTOEDIT=no
 alias gf="fzg files"
