@@ -1,43 +1,30 @@
 # Dotfiles
 
-Personal dotfiles managed with GNU Stow.
+Personal dotfiles managed with GNU Stow and Homebrew.
 
-## Prerequisites
+## Setup
 
-### Install Homebrew (if not already installed)
+1. Install Homebrew (if not already installed)
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### Install GNU Stow
-
-```bash
-brew install stow
-```
-
-## Setup
-
-1. Clone this repository to your home directory:
+2. Clone this repository to your home directory:
 
 ```bash
 git clone <repository-url> ~/dotfiles
 cd ~/dotfiles
 ```
 
-2. Use stow to symlink the dotfiles:
+3. Install the Homebrew packages defined in the Brewfile:
 
 ```bash
-# Symlink all dotfiles at once
+brew bundle --file ~/dotfiles/Brewfile
+```
+
+4. Use stow to symlink the dotfiles:
+
+```bash
 stow .
 ```
-
-### Unstowing
-
-To remove all symlinks created by stow:
-
-```bash
-cd ~/dotfiles
-stow -D .
-```
-
