@@ -1,10 +1,5 @@
-# Zsh autosuggestions
-# source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-
-# Zsh autocomplete
-# source $(brew --prefix)/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh
-
 # Brew
+# ----------------------------
 brew() {
   # Run brew normally
   command brew "$@"
@@ -15,13 +10,18 @@ brew() {
   fi
 }
 
+
 # Git
+# ----------------------------
+
 export GIT_MERGE_AUTOEDIT=no
+
 alias gf="fzg files"
 alias gb="fzg branch"
 alias gh="fzg history"
 alias gsl="fzg stash"
 
+alias g="git status"
 alias gs="git status"
 alias gaf="git add \$(gf)"
 alias gap="git add --all --intent-to-add && git add --patch"
@@ -41,26 +41,40 @@ alias rmf="rm \$(gf)"
 alias grm="git checkout master && gpr && git checkout - && git rebase master"
 alias gmm="git checkout master && gpr && git checkout - && git merge master"
 
+
 # FZF
+# ----------------------------
 export FZF_DEFAULT_OPTS="--color 16 --reverse"
 
+
 # BAT
+# ----------------------------
+
 export BAT_THEME="base16"
+
 
 # System
 # ----------------------------
+
 export CLICOLOR=1
+
+# cd
 alias -- -='cd -'
 alias ..="cd ../"
 alias ...="cd ../../"
 alias ....="cd ../../../"
+
+# ls
 alias l="ls -l"
 alias ll="ls -l"
 alias la="ls -la"
+
 alias c="clear"
-alias r="source ~/.zshenv; source ~/.zprofile; source ~/.zshrc"
+alias r="source ~/.zshenv && source ~/.zprofile && source ~/.zshrc"
 
 # Vim
+# ----------------------------
+
 alias v="vimmer"
 vimmer() {
   if [ -z "$1" ]
@@ -77,8 +91,15 @@ vimmer() {
   return
 }
 
+
 # Node
+# ----------------------------
+
 export NODE_ENV="development"
+
+
+# Prompt
+# ----------------------------
 
 # Enable vcs_info
 autoload -Uz vcs_info

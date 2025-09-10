@@ -17,7 +17,12 @@ return {
     skip_confirm_for_simple_edits = true,
     prompt_save_on_select_new_entry = false,
     view_options = {
-      is_always_hidden = function(name, _) return name == ".." end,
+      is_hidden_file = function(name, _)
+        return name:sub(1, 1) == "."
+      end,
+      is_always_hidden = function(name, _)
+        return name == ".." or name == ".DS_Store"
+      end,
     },
     keymaps = {
       ["."] = "actions.toggle_hidden",
