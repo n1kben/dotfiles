@@ -13,14 +13,14 @@ Personal dotfiles managed with GNU Stow and Homebrew.
 2. Clone this repository to your home directory:
 
 ```bash
-git clone <repository-url> ~/dotfiles
-cd ~/dotfiles
+git clone <repository-url> ~/.files
+cd ~/.files
 ```
 
 3. Install the Homebrew packages defined in the Brewfile:
 
 ```bash
-brew bundle --file ~/dotfiles/Brewfile
+brew bundle --file ~/.files/Brewfile
 ```
 
 4. Use stow to symlink the dotfiles:
