@@ -58,7 +58,7 @@ vim.keymap.set("x", "<S-Tab>", "<gv", { desc = "Indent left" })
 vim.keymap.set("n", "<esc>", "<cmd>nohls<cr>", { desc = "Clear search highlight" })
 vim.keymap.set("n", "<leader>n", "*", { desc = "Search word under cursor forwards" })
 vim.keymap.set("n", "<leader>r", [[:%s/<C-r><C-w>//g<Left><Left>]], { desc = "Replace word under cursor" })
-vim.keymap.set("x", "r", "\"hy:%s/<C-r>h//gc<left><left><left>", { desc = "Replace word visual selection" })
+vim.keymap.set("x", "r", '"hy:%s/<C-r>h//gc<left><left><left>', { desc = "Replace word visual selection" })
 vim.keymap.set("x", "n", ':lua config.visual_set_search("/")<CR>/<C-R>=@/<CR><CR>')
 
 -- Diagnostics
@@ -74,4 +74,6 @@ vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 vim.keymap.set("n", "gj", "J", { desc = "Join lines" })
 
 -- Reload config
-vim.keymap.set('n', 'R', function() dofile(vim.env.MYVIMRC) end, { desc = "Reload Neovim config" })
+vim.keymap.set("n", "R", function()
+  dofile(vim.env.MYVIMRC)
+end, { desc = "Reload Neovim config" })
