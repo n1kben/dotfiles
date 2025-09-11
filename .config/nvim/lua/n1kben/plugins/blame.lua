@@ -1,4 +1,18 @@
 return {
   "FabijanZulj/blame.nvim",
-  lazy = false,
+  cmd = "BlameToggle",
+  keys = {
+    { "<leader>b", "<cmd>BlameToggle<cr>", { desc = "Toggle blame" } },
+  },
+  config = function()
+    require("blame").setup({
+      mappings = {
+        commit_info = "i",
+        stack_push = "<CR>",
+        stack_pop = "-",
+        show_commit = "o",
+        close = { "q" },
+      }
+    })
+  end,
 }

@@ -44,6 +44,9 @@ vim.opt.softtabstop = 2
 vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 
+-- Keywords
+vim.opt.iskeyword:append("-")
+
 -- Yank highlight
 local highlight_yank_group = vim.api.nvim_create_augroup('highlight_yank', { clear = true })
 vim.api.nvim_create_autocmd('TextYankPost', {

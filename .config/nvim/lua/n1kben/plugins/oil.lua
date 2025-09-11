@@ -25,7 +25,7 @@ return {
       end,
     },
     keymaps = {
-      ["."] = "actions.toggle_hidden",
+      ["<leader>."] = "actions.toggle_hidden",
       ["<CR>"] = function()
         local oil = require("oil")
         local entry = oil.get_cursor_entry()

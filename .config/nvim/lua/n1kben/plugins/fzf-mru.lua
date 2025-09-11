@@ -3,7 +3,6 @@ return {
   dependencies = {
     "ibhagwan/fzf-lua"
   },
-  lazy = false,
   opts = {},
   keys = {
     {

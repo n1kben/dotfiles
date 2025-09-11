@@ -20,7 +20,7 @@ return {
     { "<leader>F", mode = "n", function() require "fzf-lua".live_grep() end,                                    { desc = "Live grep" } },
     { "<leader>N", mode = "n", function() require "fzf-lua".live_grep({ search = get_cword() }) end,            { desc = "Live grep word" } },
     { "<leader>N", mode = "v", function() require "fzf-lua".live_grep({ search = get_visual_selection() }) end, { desc = "Live grep visual" } },
-    { "<leader>K", mode = "n", function() require "fzf-lua".commands() end,                                     { desc = "Commands" } },
+    { "<leader>P", mode = "n", function() require "fzf-lua".commands() end,                                     { desc = "Commands" } },
   },
   opts = {
     winopts = {

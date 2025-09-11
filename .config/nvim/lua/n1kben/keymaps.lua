@@ -2,13 +2,13 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
--- _G.config = _G.config or {}
--- function config.visual_set_search(cmdtype)
---   local tmp = vim.fn.getreg("s")
---   vim.cmd.normal({ args = { 'gv"sy' }, bang = true })
---   vim.fn.setreg("/", "\\V" .. vim.fn.escape(vim.fn.getreg("s"), cmdtype .. "\\"):gsub("\n", "\\n"))
---   vim.fn.setreg("s", tmp)
--- end
+_G.config = _G.config or {}
+function config.visual_set_search(cmdtype)
+  local tmp = vim.fn.getreg("s")
+  vim.cmd.normal({ args = { 'gv"sy' }, bang = true })
+  vim.fn.setreg("/", "\\V" .. vim.fn.escape(vim.fn.getreg("s"), cmdtype .. "\\"):gsub("\n", "\\n"))
+  vim.fn.setreg("s", tmp)
+end
 
 -- Movement
 vim.keymap.set({ "n", "o", "x" }, "B", "^", { desc = "Move to start of line" })
@@ -59,7 +59,7 @@ vim.keymap.set("n", "<esc>", "<cmd>nohls<cr>", { desc = "Clear search highlight"
 vim.keymap.set("n", "<leader>n", "*", { desc = "Search word under cursor forwards" })
 vim.keymap.set("n", "<leader>r", [[:%s/<C-r><C-w>//g<Left><Left>]], { desc = "Replace word under cursor" })
 vim.keymap.set("x", "r", "\"hy:%s/<C-r>h//gc<left><left><left>", { desc = "Replace word visual selection" })
---vim.keymap.set("x", "n", ':lua config.visual_set_search("/")<CR>/<C-R>=@/<CR><CR>')
+vim.keymap.set("x", "n", ':lua config.visual_set_search("/")<CR>/<C-R>=@/<CR><CR>')
 
 -- Diagnostics
 vim.keymap.set("n", "<leader>e", vim.diagnostic.setqflist, { desc = "Show diagnostics" })
@@ -67,8 +67,8 @@ vim.keymap.set("n", "<leader>j", vim.diagnostic.goto_next, { desc = "Next diagno
 vim.keymap.set("n", "<leader>k", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
 
 -- LSP
--- vim.keymap.set("n", "<leader>i", vim.lsp.buf.hover, { desc = "Hover" })
--- vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
+vim.keymap.set("n", "<leader>i", vim.lsp.buf.hover, { desc = "Hover" })
+vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 
 -- Join lines
 vim.keymap.set("n", "gj", "J", { desc = "Join lines" })

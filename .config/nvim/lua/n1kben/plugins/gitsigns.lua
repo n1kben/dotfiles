@@ -1,5 +1,6 @@
 return {
   "lewis6991/gitsigns.nvim",
+  event = "BufRead",
   opts = {
     on_attach = function(bufnr)
       local gitsigns = require("gitsigns")
@@ -46,5 +47,4 @@ return {
       map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>")
     end
   },
-  lazy = false,
 }

@@ -2,15 +2,12 @@
   "base16-nvim": { "branch": "master", "commit": "0f2863e28d66a65129b6a277e0652736f9ad4fad" },
   "blame.nvim": { "branch": "main", "commit": "b87b8c820e4cec06fbbd2f946b7b35c45906ee0c" },
   "blink.cmp": { "branch": "main", "commit": "fa9e5fa324f8a721a562a7baeba35a0da44ec651" },
-  "coerce.nvim": { "branch": "main", "commit": "bad4f5ef5c2477d72a58379624baeebc4977ac75" },
   "conform.nvim": { "branch": "master", "commit": "b4aab989db276993ea5dcb78872be494ce546521" },
   "fzf-lua": { "branch": "main", "commit": "2dce48dac09cec8143820f1d33381fe6d03a3900" },
   "fzf-mru.nvim": { "branch": "main", "commit": "dcb1a8a74a38d0c16377b6f1225cd04caaaac607" },
   "gitsigns.nvim": { "branch": "main", "commit": "6e3c66548035e50db7bd8e360a29aec6620c3641" },
   "lazy.nvim": { "branch": "main", "commit": "6c3bda4aca61a13a9c63f1c1d1b16b9d3be90d7a" },
-  "mason-conform.nvim": { "branch": "main", "commit": "48da2ebd5efbaf8a99566eadc3ece82d523f03c5" },
   "mason.nvim": { "branch": "main", "commit": "7dc4facca9702f95353d5a1f87daf23d78e31c2a" },
-  "mini.statusline": { "branch": "main", "commit": "3c86b8a1cb67e347e91815b21662c28fd52ac144" },
   "nvim-treesitter": { "branch": "master", "commit": "42fc28ba918343ebfd5565147a42a26580579482" },
   "oil.nvim": { "branch": "master", "commit": "07f80ad645895af849a597d1cac897059d89b686" },
   "portal.nvim": { "branch": "main", "commit": "880b6943d6959cdca090a540dd353194cb2fdeb4" },
@@ -20,6 +17,5 @@
   "vim-surround": { "branch": "master", "commit": "3d188ed2113431cf8dac77be61b842acb64433d9" },
   "vim-textobj-quotes": { "branch": "master", "commit": "cca9686acf7b21d930ced1801120ecf23fb2f995" },
   "vim-textobj-user": { "branch": "master", "commit": "41a675ddbeefd6a93664a4dc52f302fe3086a933" },
-  "vim-visual-multi": { "branch": "master", "commit": "a6975e7c1ee157615bbc80fc25e4392f71c344d4" },
-  "which-key.nvim": { "branch": "main", "commit": "370ec46f710e058c9c1646273e6b225acf47cbed" }
+  "vim-visual-multi": { "branch": "master", "commit": "a6975e7c1ee157615bbc80fc25e4392f71c344d4" }
 }
