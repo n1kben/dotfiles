@@ -12,16 +12,16 @@ function RegexLayout:new(config)
 end
 
 function RegexLayout:mount()
-  -- Simple window dimensions
-  local width = vim.o.columns - 4
-  local height = vim.o.lines - 6
+  -- Smaller window dimensions
+  local width = math.min(vim.o.columns - 20, 100) -- Smaller and max width
+  local height = math.min(vim.o.lines - 10, 30)   -- Smaller and max height
   local input_height = 3
   local gap = 2 -- More spacing between windows
   local main_height = height - input_height - gap
   
-  -- Center positioning
-  local col = 2
-  local row = 2
+  -- Perfect center positioning
+  local col = math.floor((vim.o.columns - width) / 2)
+  local row = math.floor((vim.o.lines - height - gap) / 2)
   
   -- Create buffers
   local main_bufnr = vim.api.nvim_create_buf(false, true)
