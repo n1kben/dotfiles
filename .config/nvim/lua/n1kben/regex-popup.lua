@@ -96,63 +96,24 @@ function RegexLayout:setup_keymaps()
   local main_winid = self.windows.main.winid
   local input_winid = self.windows.input.winid
   
-  -- Keymap options
-  local opts = { noremap = true, silent = true, buffer = true }
-  
-  -- Main window keymaps
-  vim.api.nvim_buf_set_keymap(main_bufnr, 'n', '<C-j>', '', {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if vim.api.nvim_win_is_valid(input_winid) then
-        vim.api.nvim_set_current_win(input_winid)
+  -- Simple Tab navigation between popup windows
+  local function setup_tab_nav(bufnr)
+    vim.api.nvim_buf_set_keymap(bufnr, 'n', '<Tab>', '', {
+      noremap = true,
+      silent = true,
+      callback = function()
+        local current_win = vim.api.nvim_get_current_win()
+        if current_win == main_winid and vim.api.nvim_win_is_valid(input_winid) then
+          vim.api.nvim_set_current_win(input_winid)
+        elseif current_win == input_winid and vim.api.nvim_win_is_valid(main_winid) then
+          vim.api.nvim_set_current_win(main_winid)
+        end
       end
-    end
-  })
+    })
+  end
   
-  
-  -- Input window keymaps
-  vim.api.nvim_buf_set_keymap(input_bufnr, 'n', '<C-k>', '', {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if vim.api.nvim_win_is_valid(main_winid) then
-        vim.api.nvim_set_current_win(main_winid)
-      end
-    end
-  })
-  
-  vim.api.nvim_buf_set_keymap(input_bufnr, 'i', '<C-k>', '', {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if vim.api.nvim_win_is_valid(main_winid) then
-        vim.api.nvim_set_current_win(main_winid)
-      end
-    end
-  })
-  
-  -- Add <C-j> mapping for input window to move down to main window (same as <C-k> but intuitive)
-  vim.api.nvim_buf_set_keymap(input_bufnr, 'n', '<C-j>', '', {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if vim.api.nvim_win_is_valid(main_winid) then
-        vim.api.nvim_set_current_win(main_winid)
-      end
-    end
-  })
-  
-  vim.api.nvim_buf_set_keymap(input_bufnr, 'i', '<C-j>', '', {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if vim.api.nvim_win_is_valid(main_winid) then
-        vim.api.nvim_set_current_win(main_winid)
-      end
-    end
-  })
-  
+  setup_tab_nav(main_bufnr)
+  setup_tab_nav(input_bufnr)
 end
 
 function RegexLayout:setup_close_autocmds()
@@ -443,46 +404,8 @@ function M.create_regex_window(regex)
   -- Initial highlight update
   update_highlights()
   
-  -- Enhanced window closing behavior
-  local function close_all()
-    layout:unmount()
-  end
-  
   -- Store layout for potential cleanup
   M._current_layout = layout
-  
-  -- Close only when actually leaving to edit a different file
-  local group = vim.api.nvim_create_augroup("RegexPopupClose", { clear = true })
-  vim.api.nvim_create_autocmd('BufEnter', {
-    group = group,
-    callback = function()
-      local current_buf = vim.api.nvim_get_current_buf()
-      
-      -- Only close if we enter a buffer that's not one of our regex buffers
-      -- AND that buffer is associated with a real file or different functionality
-      if current_buf ~= text_buf and current_buf ~= regex_buf then
-        local buftype = vim.api.nvim_buf_get_option(current_buf, 'buftype')
-        local filetype = vim.api.nvim_buf_get_option(current_buf, 'filetype')
-        
-        -- Close if it's a real file or a different kind of special buffer
-        if buftype == '' or (buftype ~= 'nofile' and filetype ~= 'regex') then
-          close_all()
-          vim.api.nvim_del_augroup_by_id(group)
-          M._current_layout = nil
-        end
-      end
-    end
-  })
-  
-  -- Handle vim resize
-  vim.api.nvim_create_autocmd('VimResized', {
-    group = group,
-    callback = function()
-      if layout then
-        layout:update()
-      end
-    end
-  })
 end
 
 function M.show_regex_popup()
@@ -503,6 +426,11 @@ function M.close_regex_popup()
   end
 end
 
+-- Function to open an empty regex popup for experimentation
+function M.show_empty_regex_popup()
+  M.create_regex_window("")
+end
+
 -- Function to toggle the regex popup
 function M.toggle_regex_popup()
   if M._current_layout then
@@ -510,6 +438,14 @@ function M.toggle_regex_popup()
   else
     M.show_regex_popup()
   end
+end
+
+-- Setup function to create commands
+function M.setup()
+  -- Create Vim command for empty regex popup
+  vim.api.nvim_create_user_command('RegexPopup', function()
+    M.show_empty_regex_popup()
+  end, { desc = 'Open empty regex popup for experimentation' })
 end
 
 return M
