@@ -16,6 +16,13 @@ local function setup_highlight_groups()
   for i, color in ipairs(colors) do
     vim.api.nvim_set_hl(0, "RegexCapture" .. i, color)
   end
+  
+  -- Define highlight for full match (group 0) - underline + bold
+  vim.api.nvim_set_hl(0, "RegexFullMatch", {
+    underline = true,
+    bold = true,
+    sp = "#FFFFFF" -- underline color
+  })
 end
 
 local function get_word_under_cursor()
@@ -46,7 +53,13 @@ end
 
 
 local function highlight_matches(buf, regex)
-  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+  -- Create separate namespaces for different highlight types
+  local ns_full = vim.api.nvim_create_namespace("regex_full_match")
+  local ns_groups = vim.api.nvim_create_namespace("regex_capture_groups")
+  
+  -- Clear existing highlights
+  vim.api.nvim_buf_clear_namespace(buf, ns_full, 0, -1)
+  vim.api.nvim_buf_clear_namespace(buf, ns_groups, 0, -1)
   
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
   
@@ -113,86 +126,142 @@ local function highlight_matches(buf, regex)
     
     local ok, matches = pcall(vim.json.decode, cleaned_result)
     if ok and type(matches) == "table" then
+      -- Separate full matches and capture groups
+      local full_matches = {}
+      local capture_groups = {}
+      
       for _, match in ipairs(matches) do
-        local highlight_group
         if match.group == 0 then
-          highlight_group = "Search"
+          table.insert(full_matches, match)
         else
-          local color_index = ((match.group - 1) % 8) + 1
-          highlight_group = "RegexCapture" .. color_index
+          table.insert(capture_groups, match)
         end
+      end
+      
+      -- Apply full match highlights first (underline + bold)
+      for _, match in ipairs(full_matches) do
+        vim.api.nvim_buf_set_extmark(buf, ns_full, match.line, match.start, {
+          end_col = match.finish,
+          hl_group = "RegexFullMatch",
+          priority = 100 -- Lower priority so capture groups can override
+        })
+      end
+      
+      -- Apply capture group highlights (background colors)
+      for _, match in ipairs(capture_groups) do
+        local color_index = ((match.group - 1) % 8) + 1
+        local highlight_group = "RegexCapture" .. color_index
         
-        vim.api.nvim_buf_add_highlight(
-          buf,
-          -1,
-          highlight_group,
-          match.line,
-          match.start,
-          match.finish
-        )
+        vim.api.nvim_buf_set_extmark(buf, ns_groups, match.line, match.start, {
+          end_col = match.finish,
+          hl_group = highlight_group,
+          priority = 200 -- Higher priority so they show on top
+        })
       end
     end
   end
 end
 
-function M.show_regex_popup()
+function M.create_regex_split(regex)
   setup_highlight_groups()
   
-  local regex = get_word_under_cursor()
+  -- Create the main text buffer (top split)
+  local text_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(text_buf, 'modifiable', true)
+  vim.api.nvim_buf_set_option(text_buf, 'bufhidden', 'wipe')
+  vim.api.nvim_buf_set_option(text_buf, 'filetype', 'text')
   
-  if regex == "" then
-    vim.notify("No regex found under cursor", vim.log.levels.WARN)
-    return
+  -- Create the regex input buffer (bottom split)
+  local regex_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(regex_buf, 'modifiable', true)
+  vim.api.nvim_buf_set_option(regex_buf, 'bufhidden', 'wipe')
+  vim.api.nvim_buf_set_option(regex_buf, 'filetype', 'regex')
+  
+  -- Set initial regex content
+  vim.api.nvim_buf_set_lines(regex_buf, 0, -1, false, {regex})
+  
+  -- Open horizontal split
+  vim.cmd('split')
+  local text_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(text_win, text_buf)
+  
+  -- Create bottom split for regex input
+  vim.cmd('split')
+  local regex_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(regex_win, regex_buf)
+  
+  -- Resize the regex input window to be smaller
+  vim.api.nvim_win_set_height(regex_win, 3)
+  
+  -- Focus on the text buffer
+  vim.api.nvim_set_current_win(text_win)
+  
+  local function get_current_regex()
+    local lines = vim.api.nvim_buf_get_lines(regex_buf, 0, -1, false)
+    local current_regex = lines[1] or ""
+    -- Remove surrounding slashes if present
+    if current_regex:match("^/.*/$") then
+      current_regex = current_regex:sub(2, -2)
+    end
+    return current_regex
   end
-  
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(buf, 'modifiable', true)
-  vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
-  
-  
-  local width = math.floor(vim.o.columns * 0.8)
-  local height = math.floor(vim.o.lines * 0.6)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
-  
-  local opts = {
-    relative = 'editor',
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    style = 'minimal',
-    border = 'rounded',
-    title = ' Regex: ' .. regex .. ' ',
-    title_pos = 'center',
-  }
-  
-  local win = vim.api.nvim_open_win(buf, true, opts)
   
   local function update_highlights()
-    pcall(function()
-      highlight_matches(buf, regex)
-    end)
+    local current_regex = get_current_regex()
+    if current_regex ~= "" then
+      pcall(function()
+        highlight_matches(text_buf, current_regex)
+      end)
+    else
+      vim.api.nvim_buf_clear_namespace(text_buf, -1, 0, -1)
+    end
   end
   
-  
-  update_highlights()
-  
+  -- Update highlights when text changes
   vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
-    buffer = buf,
+    buffer = text_buf,
     callback = update_highlights,
   })
   
-  
-  vim.api.nvim_create_autocmd('BufLeave', {
-    buffer = buf,
-    once = true,
-    callback = function()
-      if vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_close(win, true)
-      end
-    end,
+  -- Update highlights when regex changes
+  vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
+    buffer = regex_buf,
+    callback = update_highlights,
   })
+  
+  -- Initial highlight update
+  update_highlights()
+  
+  -- Close both windows when switching to a different buffer (not just window)
+  local function close_all()
+    if vim.api.nvim_win_is_valid(text_win) then
+      vim.api.nvim_win_close(text_win, true)
+    end
+    if vim.api.nvim_win_is_valid(regex_win) then
+      vim.api.nvim_win_close(regex_win, true)
+    end
+  end
+  
+  -- Only close when actually switching to a different buffer, not just changing windows
+  vim.api.nvim_create_autocmd('BufEnter', {
+    callback = function()
+      local current_buf = vim.api.nvim_get_current_buf()
+      if current_buf ~= text_buf and current_buf ~= regex_buf then
+        close_all()
+        return true -- Remove this autocmd
+      end
+    end
+  })
+end
+
+function M.show_regex_popup()
+  local regex = get_word_under_cursor()
+  
+  if regex == "" then
+    regex = "\\d+"  -- Default regex pattern
+  end
+  
+  M.create_regex_split(regex)
 end
 
 return M
