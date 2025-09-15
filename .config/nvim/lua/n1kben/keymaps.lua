@@ -79,6 +79,11 @@ vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 -- Join lines
 vim.keymap.set("n", "gj", "J", { desc = "Join lines" })
 
+-- Regex popup
+vim.keymap.set("n", "<leader>x", function()
+  require("n1kben.regex-popup").show_regex_popup()
+end, { desc = "Show regex popup with highlights" })
+
 -- Reload config
 vim.keymap.set("n", "R", function()
   dofile(vim.env.MYVIMRC)
