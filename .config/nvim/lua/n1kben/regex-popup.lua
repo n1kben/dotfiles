@@ -1,5 +1,23 @@
 local M = {}
 
+-- Define highlight groups for capture groups with maximum color distinction
+local function setup_highlight_groups()
+  local colors = {
+    { fg = "#FFAAAA", bg = "#440000" }, -- Light Red on Dark Red
+    { fg = "#AAFFAA", bg = "#004400" }, -- Light Green on Dark Green
+    { fg = "#AACCFF", bg = "#001144" }, -- Light Blue on Dark Blue
+    { fg = "#FFFFAA", bg = "#444400" }, -- Light Yellow on Dark Yellow
+    { fg = "#FFAAFF", bg = "#440044" }, -- Light Magenta on Dark Magenta
+    { fg = "#AAFFFF", bg = "#004444" }, -- Light Cyan on Dark Cyan
+    { fg = "#FFCCAA", bg = "#442200" }, -- Light Orange on Dark Orange
+    { fg = "#CCAAFF", bg = "#220044" }, -- Light Purple on Dark Purple
+  }
+  
+  for i, color in ipairs(colors) do
+    vim.api.nvim_set_hl(0, "RegexCapture" .. i, color)
+  end
+end
+
 local function get_word_under_cursor()
   local line = vim.api.nvim_get_current_line()
   local col = vim.api.nvim_win_get_cursor(0)[2]
@@ -44,11 +62,27 @@ local function highlight_matches(buf, regex)
         let match;
         regex.lastIndex = 0;
         while ((match = regex.exec(line)) !== null) {
+          // Add the full match (capture group 0)
           matches.push({
             line: lineIndex,
             start: match.index,
-            finish: match.index + match[0].length
+            finish: match.index + match[0].length,
+            group: 0
           });
+          
+          // Add each capture group
+          for (let i = 1; i < match.length; i++) {
+            if (match[i] !== undefined) {
+              const groupStart = line.indexOf(match[i], match.index);
+              matches.push({
+                line: lineIndex,
+                start: groupStart,
+                finish: groupStart + match[i].length,
+                group: i
+              });
+            }
+          }
+          
           if (!regex.global) break;
         }
       });
@@ -80,10 +114,18 @@ local function highlight_matches(buf, regex)
     local ok, matches = pcall(vim.json.decode, cleaned_result)
     if ok and type(matches) == "table" then
       for _, match in ipairs(matches) do
+        local highlight_group
+        if match.group == 0 then
+          highlight_group = "Search"
+        else
+          local color_index = ((match.group - 1) % 8) + 1
+          highlight_group = "RegexCapture" .. color_index
+        end
+        
         vim.api.nvim_buf_add_highlight(
           buf,
           -1,
-          "Search",
+          highlight_group,
           match.line,
           match.start,
           match.finish
@@ -94,6 +136,8 @@ local function highlight_matches(buf, regex)
 end
 
 function M.show_regex_popup()
+  setup_highlight_groups()
+  
   local regex = get_word_under_cursor()
   
   if regex == "" then
@@ -139,7 +183,6 @@ function M.show_regex_popup()
     callback = update_highlights,
   })
   
-  vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '<cmd>q<cr>', { silent = true })
   
   vim.api.nvim_create_autocmd('BufLeave', {
     buffer = buf,
