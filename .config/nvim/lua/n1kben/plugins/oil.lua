@@ -1,6 +1,8 @@
 local function in_list(val, list)
   for _, v in ipairs(list) do
-    if v == val then return true end
+    if v == val then
+      return true
+    end
   end
   return false
 end
@@ -25,7 +27,7 @@ return {
       end,
     },
     keymaps = {
-      ["<leader>."] = "actions.toggle_hidden",
+      ["g."] = "actions.toggle_hidden",
       ["<CR>"] = function()
         local oil = require("oil")
         local entry = oil.get_cursor_entry()

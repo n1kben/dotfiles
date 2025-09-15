@@ -4,7 +4,7 @@ return {
   opts = {
     ensure_installed = {
       "rescript-language-server",
-      "prettier",
+      "lua-language-server",
       "typescript-language-server",
     },
   },

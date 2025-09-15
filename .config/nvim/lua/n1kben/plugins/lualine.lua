@@ -13,10 +13,10 @@ return {
       },
       sections = {
         lualine_a = {},
-        lualine_b = {},
-        lualine_c = { "filename" },
-        lualine_x = { "lsp_status", "diagnostics", "filetype", "location" },
-        lualine_y = {},
+        lualine_b = { "filename" },
+        lualine_c = {},
+        lualine_x = {},
+        lualine_y = { "diagnostics", "filetype", "location" },
         lualine_z = {},
       },
     })

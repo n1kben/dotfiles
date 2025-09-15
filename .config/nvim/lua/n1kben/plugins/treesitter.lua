@@ -1,11 +1,12 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    enable = false,
     build = ":TSUpdate",
     event = "BufEnter",
+    lazy = false,
     dependencies = {
-      "rescript-lang/tree-sitter-rescript"
+      "rescript-lang/tree-sitter-rescript",
+      "nvim-treesitter/nvim-treesitter-textobjects",
     },
     config = function()
       local configs = require("nvim-treesitter.configs")
@@ -23,9 +24,7 @@ return {
       }
 
       configs.setup({
-        -- auto_install = true,
-        -- ignore_install = { "all" },
-        -- modules = {},
+        auto_install = true,
         ensure_installed = { "lua", "rescript", "javascript", "json", "html", "typescript" },
         sync_install = false,
         highlight = { enable = true },
@@ -33,16 +32,15 @@ return {
         textobjects = {
           select = {
             enable = true,
-            lookahead = true,
             keymaps = {
               ["af"] = "@function.outer",
               ["if"] = "@function.inner",
-              ["aa"] = "@parameter.outer",
-              ["ia"] = "@parameter.inner",
+              ["ab"] = "@block.outer",
+              ["ib"] = "@block.inner",
             },
           },
         },
       })
-    end
-  }
+    end,
+  },
 }

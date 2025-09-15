@@ -6,7 +6,7 @@ brew() {
 
   # If it's an install command, dump Brewfile after
   if [[ "$1" == "install" || "$1" == "uninstall" || "$1" == "upgrade" ]]; then
-    command brew bundle dump --force --file="$HOME/dotfiles/Brewfile"
+    command brew bundle dump --force --file="$DOTFILES/Brewfile"
   fi
 }
 

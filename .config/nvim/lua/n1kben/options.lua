@@ -10,6 +10,12 @@ vim.diagnostic.config({
   virtual_lines = { current_line = true },
 })
 
+-- Swap files
+vim.opt.swapfile = false
+
+-- Win border
+vim.opt.winborder = rounded
+
 -- Undofile
 vim.opt.undofile = true
 vim.opt.undodir = vim.fn.stdpath("cache") .. "/undo"
@@ -48,21 +54,21 @@ vim.opt.expandtab = true
 vim.opt.iskeyword:append("-")
 
 -- Yank highlight
-local highlight_yank_group = vim.api.nvim_create_augroup('highlight_yank', { clear = true })
-vim.api.nvim_create_autocmd('TextYankPost', {
+local highlight_yank_group = vim.api.nvim_create_augroup("highlight_yank", { clear = true })
+vim.api.nvim_create_autocmd("TextYankPost", {
   group = highlight_yank_group,
   callback = function()
-    vim.hl.on_yank { higroup = 'IncSearch', timeout = 500 }
+    vim.hl.on_yank({ higroup = "IncSearch", timeout = 500 })
   end,
 })
 
 -- o or O don’t automatically continue the comment from the previous line
-local formatoptions_group = vim.api.nvim_create_augroup('formatoptions', { clear = true })
-vim.api.nvim_create_autocmd('FileType', {
+local formatoptions_group = vim.api.nvim_create_augroup("formatoptions", { clear = true })
+vim.api.nvim_create_autocmd("FileType", {
   group = formatoptions_group,
-  pattern = '*',
+  pattern = "*",
   callback = function()
-    vim.opt_local.formatoptions:remove('o')
-    vim.opt_local.formatoptions:remove('O')
+    vim.opt_local.formatoptions:remove("o")
+    vim.opt_local.formatoptions:remove("O")
   end,
 })

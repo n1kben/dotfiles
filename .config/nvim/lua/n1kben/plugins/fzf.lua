@@ -70,6 +70,14 @@ return {
       end,
       { desc = "Keymaps" },
     },
+    {
+      "<leader><CR>",
+      mode = "n",
+      function()
+        require("fzf-lua").resume()
+      end,
+      { desc = "Resume" },
+    },
   },
   opts = {
     winopts = {
