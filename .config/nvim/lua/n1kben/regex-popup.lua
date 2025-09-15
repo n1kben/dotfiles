@@ -81,6 +81,9 @@ function RegexLayout:mount()
   
   -- Set up keymaps for navigation between windows
   self:setup_keymaps()
+  
+  -- Set up autocmds to close when buffers are deleted
+  self:setup_close_autocmds()
 end
 
 function RegexLayout:setup_keymaps()
@@ -107,13 +110,6 @@ function RegexLayout:setup_keymaps()
     end
   })
   
-  vim.api.nvim_buf_set_keymap(main_bufnr, 'n', 'q', '', {
-    noremap = true,
-    silent = true,
-    callback = function()
-      self:unmount()
-    end
-  })
   
   -- Input window keymaps
   vim.api.nvim_buf_set_keymap(input_bufnr, 'n', '<C-k>', '', {
@@ -157,17 +153,48 @@ function RegexLayout:setup_keymaps()
     end
   })
   
-  vim.api.nvim_buf_set_keymap(input_bufnr, 'n', 'q', '', {
-    noremap = true,
-    silent = true,
+end
+
+function RegexLayout:setup_close_autocmds()
+  if not self.windows.main or not self.windows.input then
+    return
+  end
+  
+  local main_bufnr = self.windows.main.bufnr
+  local input_bufnr = self.windows.input.bufnr
+  
+  -- Create autocmd group for this layout instance
+  local group = vim.api.nvim_create_augroup("RegexPopupClose_" .. main_bufnr, { clear = true })
+  
+  -- Close layout when either buffer is deleted/wiped
+  vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
+    group = group,
+    buffer = main_bufnr,
     callback = function()
       self:unmount()
     end
   })
+  
+  vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
+    group = group,
+    buffer = input_bufnr,
+    callback = function()
+      self:unmount()
+    end
+  })
+  
+  -- Store group for cleanup
+  self.autocmd_group = group
 end
 
 function RegexLayout:unmount()
-  -- Clear all autocmds that might reference this layout
+  -- Clear autocmds for this layout instance
+  if self.autocmd_group then
+    pcall(vim.api.nvim_del_augroup_by_id, self.autocmd_group)
+    self.autocmd_group = nil
+  end
+  
+  -- Clear all other autocmds that might reference this layout
   pcall(vim.api.nvim_del_augroup_by_name, "RegexPopupClose")
   
   -- Close all windows and clean up
