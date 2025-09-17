@@ -16,7 +16,7 @@ return {
           },
         })
       end,
-      { desc = "MRU Files" }
+      { desc = "FZF: MRU files" },
     },
   }
 }

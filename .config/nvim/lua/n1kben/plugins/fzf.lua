@@ -20,7 +20,7 @@ return {
       function()
         require("fzf-lua").lsp_document_symbols()
       end,
-      { desc = "LSP symbols" },
+      { desc = "FZF: LSP document symbols" },
     },
     {
       "<leader>O",
@@ -28,7 +28,7 @@ return {
       function()
         require("fzf-lua").lsp_workspace_symbols()
       end,
-      { desc = "LSP workspace symbols" },
+      { desc = "FZF: LSP workspace symbols" },
     },
     {
       "<leader>f",
@@ -36,7 +36,7 @@ return {
       function()
         require("fzf-lua").blines()
       end,
-      { desc = "Lines" },
+      { desc = "FZF: Lines" },
     },
     {
       "<leader>F",
@@ -44,7 +44,7 @@ return {
       function()
         require("fzf-lua").live_grep()
       end,
-      { desc = "Live grep" },
+      { desc = "FZF: Live grep" },
     },
     {
       "<leader>N",
@@ -52,7 +52,7 @@ return {
       function()
         require("fzf-lua").live_grep({ search = get_cword() })
       end,
-      { desc = "Live grep word" },
+      { desc = "FZF: Live grep word" },
     },
     {
       "<leader>N",
@@ -60,15 +60,15 @@ return {
       function()
         require("fzf-lua").live_grep({ search = get_visual_selection() })
       end,
-      { desc = "Live grep visual" },
+      { desc = "FZF: Live grep visual" },
     },
     {
       "<leader>P",
-      mode = "n",
+      mode = { "n", "v" },
       function()
         require("fzf-lua").keymaps()
       end,
-      { desc = "Keymaps" },
+      { desc = "FZF: Keymaps" },
     },
     {
       "<leader><CR>",
@@ -76,15 +76,15 @@ return {
       function()
         require("fzf-lua").resume()
       end,
-      { desc = "Resume" },
+      { desc = "FZF: Resume" },
     },
   },
   opts = {
     winopts = {
-      height = 1, -- window height
-      width = 1, -- window width
-      row = 0, -- window row position (0=top, 1=bottom)
-      col = 0, -- window col position (0=left, 1=right)
+      height = 1,      -- window height
+      width = 1,       -- window width
+      row = 0,         -- window row position (0=top, 1=bottom)
+      col = 0,         -- window col position (0=left, 1=right)
       border = "none", -- window border style
     },
     grep = {

@@ -2,7 +2,7 @@ return {
   "FabijanZulj/blame.nvim",
   cmd = "BlameToggle",
   keys = {
-    { "<leader>b", "<cmd>BlameToggle<cr>", { desc = "Toggle blame" } },
+    { "<leader>b", "<cmd>BlameToggle<cr>", { desc = "Blame: Toggle" } },
   },
   config = function()
     require("blame").setup({

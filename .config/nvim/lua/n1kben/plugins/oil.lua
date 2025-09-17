@@ -11,7 +11,7 @@ return {
   "stevearc/oil.nvim",
   lazy = false,
   keys = {
-    { "-", "<cmd>Oil<cr>", { desc = "Open parent directory" } },
+    { "-", "<cmd>Oil<cr>", { desc = "Oil: Open current directory" } },
   },
   opts = {
     use_default_keymaps = false,
