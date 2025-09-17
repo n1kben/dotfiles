@@ -128,21 +128,13 @@ function RegexLayout:setup_close_autocmds()
   local group = vim.api.nvim_create_augroup("RegexPopupClose_" .. main_bufnr, { clear = true })
   
   -- Close layout when either buffer is deleted/wiped
-  vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
-    group = group,
-    buffer = main_bufnr,
-    callback = function()
-      self:unmount()
-    end
-  })
-  
-  vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
-    group = group,
-    buffer = input_bufnr,
-    callback = function()
-      self:unmount()
-    end
-  })
+  for _, bufnr in ipairs({main_bufnr, input_bufnr}) do
+    vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
+      group = group,
+      buffer = bufnr,
+      callback = function() self:unmount() end
+    })
+  end
   
   -- Store group for cleanup
   self.autocmd_group = group
@@ -155,8 +147,6 @@ function RegexLayout:unmount()
     self.autocmd_group = nil
   end
   
-  -- Clear all other autocmds that might reference this layout
-  pcall(vim.api.nvim_del_augroup_by_name, "RegexPopupClose")
   
   -- Close all windows and clean up
   for name, window in pairs(self.windows) do
@@ -172,12 +162,6 @@ function RegexLayout:unmount()
   end
 end
 
-function RegexLayout:update()
-  -- Handle window resizing if needed
-  -- For now, we'll just recreate the layout
-  self:unmount()
-  self:mount()
-end
 
 function RegexLayout:get_current_regex()
   if not self.windows.input or not self.windows.input.bufnr then
@@ -188,16 +172,9 @@ function RegexLayout:get_current_regex()
   local current_regex = lines[1] or ""
   
   -- Remove surrounding slashes if present
-  if current_regex:match("^/.*/$") then
-    current_regex = current_regex:sub(2, -2)
-  end
-  
-  return current_regex
+  return current_regex:match("^/(.*)/$") or current_regex
 end
 
-function RegexLayout:update_input_title(regex)
-  -- No title on input window - content is visible directly
-end
 
 -- Define highlight groups for capture groups with maximum color distinction
 local function setup_highlight_groups()
@@ -228,26 +205,22 @@ local function get_word_under_cursor()
   local line = vim.api.nvim_get_current_line()
   local col = vim.api.nvim_win_get_cursor(0)[2]
   
+  -- Find word boundaries
   local start_pos = col
-  local end_pos = col
-  
   while start_pos > 0 and line:sub(start_pos, start_pos):match("[%w%p]") do
     start_pos = start_pos - 1
   end
   start_pos = start_pos + 1
   
+  local end_pos = col
   while end_pos < #line and line:sub(end_pos + 1, end_pos + 1):match("[%w%p]") do
     end_pos = end_pos + 1
   end
   
   local regex = line:sub(start_pos, end_pos)
   
-  -- Remove surrounding slashes if present (common regex notation)
-  if regex:match("^/.*/$") then
-    regex = regex:sub(2, -2)
-  end
-  
-  return regex
+  -- Remove surrounding slashes if present
+  return regex:match("^/(.*)/$") or regex
 end
 
 
@@ -261,7 +234,6 @@ local function highlight_matches(buf, regex)
   vim.api.nvim_buf_clear_namespace(buf, ns_groups, 0, -1)
   
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-  
   
   local js_code = string.format([[
     try {
@@ -305,16 +277,14 @@ local function highlight_matches(buf, regex)
     }
   ]], vim.json.encode(regex), vim.json.encode(lines))
   
-  
   local result = vim.fn.system('node -e ' .. vim.fn.shellescape(js_code))
   
-  -- Extract just the JSON part (everything after the last newline)
-  local lines = vim.split(result, '\n')
-  local json_result = lines[#lines] or ""
-  if json_result == "" and #lines > 1 then
-    json_result = lines[#lines - 1] or ""
+  -- Extract JSON result from node output
+  local result_lines = vim.split(result, '\n')
+  local json_result = result_lines[#result_lines] or ""
+  if json_result == "" and #result_lines > 1 then
+    json_result = result_lines[#result_lines - 1] or ""
   end
-  
   
   if vim.v.shell_error == 0 then
     local cleaned_result = json_result:gsub('%s+$', '')
@@ -382,24 +352,18 @@ function M.create_regex_window(regex)
       pcall(function()
         highlight_matches(text_buf, current_regex)
       end)
-      layout:update_input_title(current_regex)
     else
       vim.api.nvim_buf_clear_namespace(text_buf, -1, 0, -1)
-      layout:update_input_title("")
     end
   end
   
-  -- Update highlights when text changes
-  vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
-    buffer = text_buf,
-    callback = update_highlights,
-  })
-  
-  -- Update highlights when regex changes
-  vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
-    buffer = regex_buf,
-    callback = update_highlights,
-  })
+  -- Update highlights when text or regex changes
+  for _, bufnr in ipairs({text_buf, regex_buf}) do
+    vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
+      buffer = bufnr,
+      callback = update_highlights,
+    })
+  end
   
   -- Initial highlight update
   update_highlights()

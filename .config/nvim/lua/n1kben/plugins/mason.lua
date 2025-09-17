@@ -1,6 +1,6 @@
 return {
   "williamboman/mason.nvim",
-  cmd = "Mason",
+  lazy = false,
   opts = {
     ensure_installed = {
       "rescript-language-server",

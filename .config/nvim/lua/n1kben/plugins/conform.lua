@@ -3,7 +3,6 @@ return {
   event = "BufWritePre",
   opts = {
     formatters_by_ft = {
-      lua = { "stylua" },
       markdown = { "prettier" },
       html = { "prettier" },
       javascript = { "prettier" },

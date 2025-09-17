@@ -9,14 +9,15 @@
   conflicts = !git diff --name-only --diff-filter=U | uniq
   is-rebasing = !if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then echo rebase; fi
   is-merging = !if [ -f .git/MERGE_HEAD ]; then echo merge; fi
+[user]
+  email = anon@anon.anon
+  name = Anon
 [include]
-  path = ~/.gitconfig-private
-[includeIf "gitdir:~/Developer/Work/"]
-  path = ~/.gitconfig-work
+  path = ~/.gitconfig-override
 [push]
   default = simple
 [core]
-  excludesfile = ~/.gitignore_global
+  excludesfile = ~/.gitignore-global
   fileMode = false
   editor = nvim
   pager = delta

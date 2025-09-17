@@ -113,3 +113,13 @@ zstyle ':vcs_info:*' enable git
 setopt PROMPT_SUBST
 PROMPT='%F{blue}%1~%f%F{green}${vcs_info_msg_0_}%f λ '
 RPROMPT='%F{black}%~%f'
+
+eval "$(zoxide init zsh)"
+
+d() {
+  local dir
+  dir=$(fd -t d -H | fzf)
+  if [[ -n "$dir" ]]; then
+    z "$dir"
+  fi
+}
