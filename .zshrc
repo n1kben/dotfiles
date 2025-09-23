@@ -114,6 +114,18 @@ v() {
 export NODE_ENV="development"
 
 
+# Fuzzy cd
+# ----------------------------
+function fzcd() {
+  local dir
+  dir=$(fd -t d . | fzf ) || return
+  cd "$dir"
+  zle reset-prompt
+}
+zle -N fzcd
+bindkey '^P' fzcd
+
+
 # Command
 # ----------------------------
 alias k="fzc edit"
@@ -151,7 +163,7 @@ source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 # Autosuggestions
 # ----------------------------
 source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-bindkey '^I' vi-forward-word # Tab for next word
+bindkey '^I' complete-word # Tab for next word
 bindkey '^[[Z' autosuggest-accept # Shift+Tab for full suggestion
 
 autoload -Uz compinit
