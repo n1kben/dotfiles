@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+repo_url=$(git remote get-url origin 2>/dev/null)
+if [[ $repo_url == git@*:*/*.git ]]; then
+  # SSH form git@host:user/repo.git
+  user_repo=$(echo "$repo_url" | sed -E 's#git@[^:]+:([^/]+/[^.]+)(\.git)?#\1#')
+  url="https://github.com/$user_repo"
+elif [[ $repo_url == https://* ]]; then
+  # already HTTPS
+  url="${repo_url%.git}"
+else
+  echo "Could not parse remote URL." >&2
+  return 1
+fi
+open "$url"

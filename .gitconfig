@@ -1,0 +1,34 @@
+[alias]
+  stage = !git add
+  unstage = !git reset
+  staged = !git diff --cached
+  undo = !git reset --soft HEAD~1
+  pop = !git stash pop
+  amend = !git commit --amend --no-edit
+  squash = !git rebase -i master
+  conflicts = !git diff --name-only --diff-filter=U | uniq
+  is-rebasing = !if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then echo rebase; fi
+  is-merging = !if [ -f .git/MERGE_HEAD ]; then echo merge; fi
+[include]
+  path = ~/.gitconfig-override
+[push]
+  default = simple
+[core]
+  excludesfile = ~/.gitignore-global
+  fileMode = false
+  editor = nvim
+  pager = delta
+[init]
+  defaultBranch = main
+[rerere]
+  enabled = true
+  autoUpdate = true
+[branch]
+  sort = -committerdate
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true  # use n and N to move between diff sections
+    dark = true      # or light = true, or omit for auto-detection
+[merge]
+    conflictStyle = zdiff3

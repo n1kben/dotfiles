@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+COMMANDS_FILE="${COMMANDS_FILE:-$HOME/.commands}"
+
+# Colors
+GRAY='\033[90m'
+RESET='\033[0m'
+
+list_commands() {
+  # Read each line of .commands
+  while IFS= read -r line; do
+    # Skip empty lines
+    [[ -z "$line" ]] && continue
+
+    # Split line into command and comment
+    cmd="${line%%#*}"          # Everything before #
+    comment="${line#*#}"       # Everything after #
+
+    # Trim spaces
+    cmd="${cmd%"${cmd##*[![:space:]]}"}"
+    cmd="${cmd#"${cmd%%[![:space:]]*}"}"
+    comment="${comment%"${comment##*[![:space:]]}"}"
+    comment="${comment#"${comment%%[![:space:]]*}"}"
+
+    # Print in desired format
+    echo -e "${comment} ${GRAY}(${cmd})${RESET}"
+  done < $COMMANDS_FILE
+}
+
+edit_commands() {
+  $EDITOR $COMMANDS_FILE
+}
+
+add_command() {
+  cmd="$1"
+  comment="$2"
+  echo "$cmd # $comment" >> $COMMANDS_FILE
+}
+
+find_command() {
+  list_commands | fzf --ansi | sed 's/.*(\(.*\))/\1/'
+}
+
+usage() {
+  cat <<EOF
+Fuzzy search commands with fzf
+
+Usage: $(basename "$0")
+       $(basename "$0") <command>
+
+Commands:
+  add   add command to history
+  edit  edit commands
+
+Examples:
+  $(basename "$0") # Find command
+  $(basename "$0") add "git status" "Git status" # Add command
+  $(basename "$0") add "!!" "Git status" # Add last command
+
+Environment:
+  COMMANDS_FILE  commands file (default: ~/.commands)
+EOF
+}
+
+case "$1" in
+  "")   find_command ;;
+  add)  add_command "$2" "$3" ;;
+  edit) edit_commands ;;
+  *)    usage ;;
+esac
