@@ -7,64 +7,141 @@ GRAY='\033[90m'
 RESET='\033[0m'
 
 list_commands() {
+  local line_num=0
+
   # Read each line of .commands
   while IFS= read -r line; do
+    ((line_num++))
+
     # Skip empty lines
-    [[ -z "$line" ]] && continue
+    [[ -z $line ]] && continue
 
-    # Split line into command and comment
-    cmd="${line%%#*}"          # Everything before #
-    comment="${line#*#}"       # Everything after #
+    # Skip lines that are pure comments (start with #)
+    [[ $line =~ ^[[:space:]]*# ]] && continue
 
-    # Trim spaces
+    # Find the last # that's likely a comment separator
+    # We look for " # " to be more precise
+    if [[ $line =~ ^(.*)\ #\ (.*)$ ]]; then
+      cmd="${BASH_REMATCH[1]}"
+      comment="${BASH_REMATCH[2]}"
+    else
+      # No comment found, entire line is the command
+      cmd="$line"
+      comment="Command $line_num"
+    fi
+
+    # Trim trailing spaces from command
     cmd="${cmd%"${cmd##*[![:space:]]}"}"
-    cmd="${cmd#"${cmd%%[![:space:]]*}"}"
-    comment="${comment%"${comment##*[![:space:]]}"}"
-    comment="${comment#"${comment%%[![:space:]]*}"}"
 
-    # Print in desired format
-    echo -e "${comment} ${GRAY}(${cmd})${RESET}"
-  done < $COMMANDS_FILE
+    # Trim leading/trailing spaces from comment
+    comment="${comment#"${comment%%[![:space:]]*}"}"
+    comment="${comment%"${comment##*[![:space:]]}"}"
+
+    # Print in desired format with proper escaping
+    printf "%s\t%b(%s)%b\n" "$comment" "$GRAY" "$cmd" "$RESET"
+  done <"$COMMANDS_FILE"
 }
 
 edit_commands() {
-  $EDITOR $COMMANDS_FILE
+  ${EDITOR:-vi} "$COMMANDS_FILE"
 }
 
 add_command() {
-  cmd="$1"
-  comment="$2"
-  echo "$cmd # $comment" >> $COMMANDS_FILE
+  local cmd="$1"
+  local comment="$2"
+
+  # Handle !! expansion
+  if [[ $cmd == "!!" ]]; then
+    cmd=$(fc -ln -1 2>/dev/null | sed 's/^[[:space:]]*//')
+    if [[ -z $cmd ]]; then
+      echo "Error: No command in history" >&2
+      return 1
+    fi
+  fi
+
+  # Validate inputs
+  if [[ -z $cmd ]]; then
+    echo "Error: Command cannot be empty" >&2
+    return 1
+  fi
+
+  if [[ -z $comment ]]; then
+    echo "Error: Comment cannot be empty" >&2
+    return 1
+  fi
+
+  # Append to file with proper formatting
+  echo "$cmd # $comment" >>"$COMMANDS_FILE"
+  echo "Added: $comment ($cmd)"
 }
 
 find_command() {
-  list_commands | fzf --ansi | sed 's/.*(\(.*\))/\1/'
+  local selected
+  selected=$(list_commands | fzf --ansi --no-sort --tac)
+
+  if [[ -n $selected ]]; then
+    # Extract command from between parentheses, handling nested parens
+    # We find the last '(' and remove everything before it, then remove the last ')'
+    local cmd="${selected##*$'\t'$GRAY(}"
+    cmd="${cmd%)$RESET}"
+    echo "$cmd"
+  fi
+}
+
+run_command() {
+  local cmd
+  cmd=$(find_command)
+
+  if [[ -n $cmd ]]; then
+    # Print the command to stderr so it's visible but doesn't interfere with output
+    echo "Running: $cmd" >&2
+    # Execute the command in the current shell context
+    eval "$cmd"
+  fi
 }
 
 usage() {
   cat <<EOF
 Fuzzy search commands with fzf
 
-Usage: $(basename "$0")
-       $(basename "$0") <command>
+Usage: $(basename "$0") [COMMAND]
 
 Commands:
-  add   add command to history
-  edit  edit commands
+  (none)  Find and output command
+  run     Find and execute command
+  add     Add command to history
+  edit    Edit commands file
+  list    List all commands
 
 Examples:
-  $(basename "$0") # Find command
-  $(basename "$0") add "git status" "Git status" # Add command
-  $(basename "$0") add "!!" "Git status" # Add last command
+  $(basename "$0")                           # Find command and output it
+  $(basename "$0") run                       # Find and execute command
+  $(basename "$0") add "git status" "Check git status"
+  $(basename "$0") add "cd \$(fzf)" "CD with fzf"
+  $(basename "$0") add "!!" "Previous command"
 
 Environment:
-  COMMANDS_FILE  commands file (default: ~/.commands)
+  COMMANDS_FILE  Commands file (default: ~/.commands)
+  EDITOR         Editor to use (default: vi)
+
+Commands file format:
+  command # description
+  cd \$(fzg worktree) # Go to worktree
+  git log --oneline # Show git log
 EOF
 }
 
-case "$1" in
-  "")   find_command ;;
-  add)  add_command "$2" "$3" ;;
+# Main
+case "${1:-}" in
+  "") find_command ;;
+  run) run_command ;;
+  add) add_command "$2" "$3" ;;
   edit) edit_commands ;;
-  *)    usage ;;
+  list) list_commands ;;
+  -h | --help | help) usage ;;
+  *)
+    echo "Unknown command: $1" >&2
+    usage >&2
+    exit 1
+    ;;
 esac

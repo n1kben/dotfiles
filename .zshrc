@@ -112,7 +112,9 @@ v() {
 # Node
 # ----------------------------
 export NODE_ENV="development"
-
+run() {
+  pnpm run $(cat package.json | jq -r '.scripts | keys[] ' | sort | fzf)
+}
 
 # Fuzzy cd
 # ----------------------------
