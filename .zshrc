@@ -112,17 +112,16 @@ v() {
 # Node
 # ----------------------------
 export NODE_ENV="development"
-run() {
-  pnpm run $(cat package.json | jq -r '.scripts | keys[] ' | sort | fzf)
-}
+
 
 # Fuzzy cd
 # ----------------------------
-function fzcd() {
+fzcd() {
   local dir
-  dir=$(fd -t d . | fzf ) || return
-  cd "$dir"
-  zle reset-prompt
+  dir=$(fd -t d -H . | fzf ) || return
+  BUFFER="cd $dir"
+  CURSOR=$#BUFFER
+  zle accept-line
 }
 zle -N fzcd
 bindkey '^P' fzcd
@@ -132,13 +131,17 @@ bindkey '^P' fzcd
 # ----------------------------
 alias k="fzc edit"
 alias ka="fzc add"
-run_command() { 
+fzcmd() { 
   local cmd="$(fzc)"
-  eval "$cmd"
-  zle reset-prompt
+  # Put the command in the buffer
+  BUFFER="$cmd"
+  # Move cursor to end of line
+  CURSOR=$#BUFFER
+  # Accept and execute - this must be the LAST zle command
+  zle accept-line
 }
-zle -N run_command
-bindkey '^K' run_command
+zle -N fzcmd
+bindkey '^K' fzcmd
 
 
 # Prompt
