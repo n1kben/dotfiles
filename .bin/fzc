@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 
 COMMANDS_FILE="${COMMANDS_FILE:-$HOME/.commands}"
+DEBUG="${DEBUG:-0}"
 
 # Colors
 GRAY='\033[90m'
 RESET='\033[0m'
+
+debug() {
+  [[ $DEBUG == "1" ]] && echo "[DEBUG] $*" >&2
+}
 
 list_commands() {
   local line_num=0
@@ -80,10 +85,16 @@ find_command() {
   selected=$(list_commands | fzf --ansi --no-sort --tac)
 
   if [[ -n $selected ]]; then
-    # Extract command from between parentheses, handling nested parens
-    # We find the last '(' and remove everything before it, then remove the last ')'
-    local cmd="${selected##*$'\t'$GRAY(}"
-    cmd="${cmd%)$RESET}"
+    # The format from list_commands is: "comment\t\033[90m(command)\033[0m"
+    # We need to extract just the command part
+
+    # Method: Split by tab, take second part, remove color codes and parentheses
+    local cmd
+    cmd=$(echo "$selected" | awk -F'\t' '{print $2}' | sed 's/\x1b\[[0-9;]*m//g' | sed 's/^(//' | sed 's/)$//')
+
+    debug "Selected: $selected"
+    debug "Extracted command: $cmd"
+
     echo "$cmd"
   fi
 }
@@ -95,8 +106,19 @@ run_command() {
   if [[ -n $cmd ]]; then
     # Print the command to stderr so it's visible but doesn't interfere with output
     echo "Running: $cmd" >&2
-    # Execute the command in the current shell context
-    eval "$cmd"
+    debug "Shell: ${ZSH_VERSION:+zsh} ${BASH_VERSION:+bash}"
+
+    # For better compatibility with both bash and zsh, use the current shell
+    if [[ -n $ZSH_VERSION ]]; then
+      # In zsh, use eval
+      eval "$cmd"
+    elif [[ -n $BASH_VERSION ]]; then
+      # In bash
+      eval "$cmd"
+    else
+      # Fallback for other shells
+      sh -c "$cmd"
+    fi
   fi
 }
 
@@ -108,7 +130,7 @@ Usage: $(basename "$0") [COMMAND]
 
 Commands:
   (none)  Find and output command
-  run     Find and execute command
+  run     Find and execute command  
   add     Add command to history
   edit    Edit commands file
   list    List all commands
@@ -123,11 +145,15 @@ Examples:
 Environment:
   COMMANDS_FILE  Commands file (default: ~/.commands)
   EDITOR         Editor to use (default: vi)
+  DEBUG          Set to 1 for debug output
 
 Commands file format:
   command # description
   cd \$(fzg worktree) # Go to worktree
   git log --oneline # Show git log
+
+Debug mode:
+  DEBUG=1 $(basename "$0") run              # Run with debug output
 EOF
 }
 
