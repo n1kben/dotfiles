@@ -13,7 +13,7 @@ for _, file in ipairs(files) do
     local fts = type(fmt.filetype) == "table" and fmt.filetype or { fmt.filetype }
     for _, ft in ipairs(fts) do
       if formatters[ft] then
-        vim.notify("Duplicate formatter for filetype: " .. ft, vim.log.levels.WARN)
+        vim.notify("[Formatter] Duplicate formatter for filetype: " .. ft, vim.log.levels.WARN)
       else
         formatters[ft] = fmt
       end
@@ -38,7 +38,7 @@ function M.format()
 
     -- Check for errors
     if vim.v.shell_error ~= 0 then
-      vim.notify("Formatter failed: " .. (formatted or "unknown error"), vim.log.levels.ERROR)
+      vim.notify("[Formatter] Failed: " .. (formatted or "unknown error"), vim.log.levels.ERROR)
       return
     end
 
@@ -60,8 +60,20 @@ function M.format()
     end
     vim.api.nvim_win_set_cursor(0, cursor)
   else
-    -- Fall back to LSP formatting
-    vim.lsp.buf.format({ async = false })
+    -- Fall back to LSP formatting if available
+    local clients = vim.lsp.get_clients({ bufnr = 0 })
+    local formatting_clients = {}
+
+    -- Check for clients that support formatting
+    for _, client in ipairs(clients) do
+      if client.supports_method("textDocument/formatting") then
+        table.insert(formatting_clients, client)
+      end
+    end
+
+    if #formatting_clients > 0 then
+      vim.lsp.buf.format({ async = false })
+    end
   end
 end
 
