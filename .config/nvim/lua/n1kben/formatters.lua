@@ -1,7 +1,7 @@
 local M = {}
 
 -- Load all formatter files from 'formatter/' folder
-local path = vim.fn.stdpath("config") .. "/formatter/"
+local path = vim.fn.stdpath("config") .. "/lua/n1kben/formatters/"
 local files = vim.fn.glob(path .. "*.lua", 0, 1) -- list all Lua files
 
 -- Map filetypes to formatter
