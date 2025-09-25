@@ -1,10 +1,5 @@
 -- LSP
 vim.lsp.inlay_hint.enable()
-vim.lsp.enable({
-  "lua",
-  "typescript",
-  "rescript",
-})
 
 -- Diagnostics
 vim.diagnostic.config({
