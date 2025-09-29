@@ -16,14 +16,35 @@ brew() {
 export GIT_MERGE_AUTOEDIT=no
 
 git() {
-  local fzf_commands=("add" "rm" "checkout", "diff")
+  local fzf_commands=("add" "rm" "checkout" "diff")
+  local cmd="$1"
 
-  # Check if it's a single command that should use fzf
-  if [[ " ${fzf_commands[*]} " =~ " $1 " && $# -eq 1 ]]; then
-    command git "$1" $(fzg files)
-  # Handle git add -p specifically  
-  elif [[ "$1" == "add" && "$2" == "-p" && $# -eq 2 ]]; then
-    command git add -p $(fzg files)
+  # Check if this command should use fzf and no files are specified
+  if [[ " ${fzf_commands[*]} " =~ " $cmd " ]]; then
+    # Check arguments for "all files" flags or existing file paths
+    local arg
+    for arg in "${@:2}"; do
+      case "$arg" in
+        --all|-A|.|*\**) 
+          command git "$@"
+          return
+          ;;
+        -*) 
+          continue # Skip other flags
+          ;;
+        *) 
+          # Non-flag argument, assume it's a file - run normally
+          command git "$@"
+          return
+          ;;
+      esac
+    done
+
+    # No files specified, use fzf file selection
+    local selected_files
+    selected_files=$(fzg files)
+    [[ -z "$selected_files" ]] && return 1
+    command git "$@" $selected_files
   else
     command git "$@"
   fi
@@ -36,6 +57,7 @@ alias gsl="fzg stash"
 
 alias g="git status"
 alias gs="git status"
+alias ga="git add"
 alias gap="git add --all --intent-to-add && git add --patch"
 alias gd="git diff"
 alias gc="git commit -v --no-verify"
@@ -43,14 +65,15 @@ alias gco="git checkout"
 alias gca="git add --all && git commit -v --no-verify"
 alias gcaa="git add --all && git commit -v --no-verify --amend"
 alias gl="gh"
+alias grm="git rm"
 alias gp="git push origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpf="git push origin \$(git rev-parse --abbrev-ref HEAD) --force-with-lease"
 alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gcb="git checkout \$(gb)"
 alias gcf="git checkout \$(gf)"
 alias gst="git stash --include-untracked"
-alias grm="git checkout master && gpr && git checkout - && git rebase master"
-alias gmm="git checkout master && gpr && git checkout - && git merge master"
+alias ge="$EDITOR \$(gf)"
+alias gk="git rebase --continue || git merge --continue"
 
 
 # FZF
