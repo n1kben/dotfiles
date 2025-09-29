@@ -91,7 +91,7 @@ local function format_git_status_content(git_data)
   line_num = line_num + 1
 
   -- Add help text at top
-  table.insert(lines, "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, gk to commit")
+  table.insert(lines, "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, gk to commit, <BS> to checkout")
   highlight_map[line_num] = "GitStatusInstructions"
   line_num = line_num + 1
 
@@ -267,7 +267,14 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         end
       else
         -- We're in modified/untracked section, so stage
-        cmd_result = vim.fn.system("git add " .. vim.fn.shellescape(file))
+        -- Check if file is deleted by seeing if it exists
+        local file_exists = vim.fn.filereadable(file) == 1
+        if file_exists then
+          cmd_result = vim.fn.system("git add " .. vim.fn.shellescape(file))
+        else
+          -- File is deleted, use git rm to stage the deletion
+          cmd_result = vim.fn.system("git rm " .. vim.fn.shellescape(file))
+        end
       end
 
       -- Check for errors
@@ -280,6 +287,27 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
       M.refresh_git_status()
     end
   end, { buffer = bufnr, desc = "Stage/unstage file under cursor" })
+
+  vim.keymap.set('n', '<BS>', function()
+    local line_num = vim.api.nvim_win_get_cursor(0)[1]
+    local file = file_map[line_num]
+
+    if file then
+      -- Confirm before checkout
+      local confirm = vim.fn.confirm("Checkout " .. file .. "? This will discard all changes.", "&Y\n&n", 1)
+      if confirm == 1 then
+        local cmd_result = vim.fn.system("git checkout -- " .. vim.fn.shellescape(file))
+
+        if vim.v.shell_error ~= 0 then
+          vim.notify("Git checkout failed: " .. cmd_result, vim.log.levels.ERROR)
+          return
+        end
+
+        -- Refresh the buffer
+        M.refresh_git_status()
+      end
+    end
+  end, { buffer = bufnr, desc = "Checkout file under cursor (discard changes)" })
 end
 
 -- Create and configure git status buffer
@@ -308,7 +336,7 @@ end
 
 -- Refresh git status in current buffer
 function M.refresh_git_status()
-  if not M._current_buffer then
+  if not M._current_buffer or not vim.api.nvim_buf_is_valid(M._current_buffer) then
     return
   end
 
@@ -330,10 +358,13 @@ end
 -- Open git status buffer
 function M.open_git_status()
   -- Check if current buffer is already valid and reuse it
-  if M._current_buffer then
+  if M._current_buffer and vim.api.nvim_buf_is_valid(M._current_buffer) then
     -- Switch to existing buffer and refresh
     vim.api.nvim_set_current_buf(M._current_buffer)
     return
+  else
+    -- Clear invalid buffer reference
+    M._current_buffer = nil
   end
 
   -- Check if we're in a git repository
