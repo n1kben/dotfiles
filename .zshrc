@@ -15,6 +15,20 @@ brew() {
 # ----------------------------
 export GIT_MERGE_AUTOEDIT=no
 
+git() {
+  local fzf_commands=("add" "rm" "checkout", "diff")
+
+  # Check if it's a single command that should use fzf
+  if [[ " ${fzf_commands[*]} " =~ " $1 " && $# -eq 1 ]]; then
+    command git "$1" $(fzg files)
+  # Handle git add -p specifically  
+  elif [[ "$1" == "add" && "$2" == "-p" && $# -eq 2 ]]; then
+    command git add -p $(fzg files)
+  else
+    command git "$@"
+  fi
+}
+
 alias gf="fzg files"
 alias gb="fzg branch"
 alias gh="fzg history"
@@ -22,10 +36,10 @@ alias gsl="fzg stash"
 
 alias g="git status"
 alias gs="git status"
-alias gaf="git add \$(gf)"
 alias gap="git add --all --intent-to-add && git add --patch"
 alias gd="git diff"
 alias gc="git commit -v --no-verify"
+alias gco="git checkout"
 alias gca="git add --all && git commit -v --no-verify"
 alias gcaa="git add --all && git commit -v --no-verify --amend"
 alias gl="gh"
@@ -35,8 +49,6 @@ alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gcb="git checkout \$(gb)"
 alias gcf="git checkout \$(gf)"
 alias gst="git stash --include-untracked"
-alias grmf="git rm \$(gf)"
-alias rmf="rm \$(gf)"
 alias grm="git checkout master && gpr && git checkout - && git rebase master"
 alias gmm="git checkout master && gpr && git checkout - && git merge master"
 
