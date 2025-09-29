@@ -29,59 +29,6 @@ local SECTIONS = {
   { key = "untracked", name = "Untracked files:" },
 }
 
--- Parse git status output into sections (async)
-local function parse_git_status_async(callback)
-  local result = { staged = {}, modified = {}, untracked = {} }
-  local pending_jobs = 0
-  local function check_completion()
-    pending_jobs = pending_jobs - 1
-    if pending_jobs == 0 then
-      callback(result)
-    end
-  end
-
-  -- Get staged files
-  pending_jobs = pending_jobs + 1
-  vim.system({"git", "diff", "--name-status", "--cached"}, {text = true}, function(obj)
-    if obj.code == 0 and obj.stdout ~= "" then
-      for line in obj.stdout:gmatch("[^\r\n]+") do
-        local status, file = line:match("^(%S+)%s+(.+)$")
-        if status and file then
-          table.insert(result.staged, { status = status, file = file })
-        end
-      end
-    end
-    check_completion()
-  end)
-
-  -- Get modified files
-  pending_jobs = pending_jobs + 1
-  vim.system({"git", "diff", "--name-status"}, {text = true}, function(obj)
-    if obj.code == 0 and obj.stdout ~= "" then
-      for line in obj.stdout:gmatch("[^\r\n]+") do
-        local status, file = line:match("^(%S+)%s+(.+)$")
-        if status and file then
-          table.insert(result.modified, { status = status, file = file })
-        end
-      end
-    end
-    check_completion()
-  end)
-
-  -- Get untracked files
-  pending_jobs = pending_jobs + 1
-  vim.system({"git", "ls-files", "--others", "--exclude-standard"}, {text = true}, function(obj)
-    if obj.code == 0 and obj.stdout ~= "" then
-      for file in obj.stdout:gmatch("[^\r\n]+") do
-        if file ~= "" then
-          table.insert(result.untracked, { status = "??", file = file })
-        end
-      end
-    end
-    check_completion()
-  end)
-end
-
 -- Synchronous version for backwards compatibility
 local function parse_git_status()
   local result = { staged = {}, modified = {}, untracked = {} }
@@ -144,7 +91,7 @@ local function format_git_status_content(git_data)
   line_num = line_num + 1
 
   -- Add help text at top
-  table.insert(lines, "Press <CR> to open file, gd for diff, <Tab> to stage/unstage, gc to commit")
+  table.insert(lines, "Press <CR> to open file, gd for diff, <Tab> to stage/unstage, gk to commit")
   highlight_map[line_num] = "GitStatusInstructions"
   line_num = line_num + 1
 
@@ -264,10 +211,29 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
 
   vim.keymap.set('n', 'gd', create_diff_handler(), { buffer = bufnr, desc = "Open diff for file under cursor" })
 
-  vim.keymap.set('n', 'gc', function()
-    -- Run git commit
-    vim.cmd('terminal git commit')
-  end, { buffer = bufnr, desc = "Open git commit in terminal" })
+  vim.keymap.set('n', 'gk', function()
+    -- Use callback version of vim.ui.input
+    vim.ui.input({ prompt = "Commit message: " }, function(commit_msg)
+      if commit_msg and commit_msg ~= "" then
+        -- Run git commit with the message
+        local result = vim.fn.system("git commit -m " .. vim.fn.shellescape(commit_msg))
+        if vim.v.shell_error == 0 then
+          vim.notify("Committed successfully", vim.log.levels.INFO)
+          -- Refresh the git status buffer after a short delay
+          vim.defer_fn(function()
+            M.refresh_git_status()
+          end, 100)
+        else
+          vim.notify("Commit failed: " .. result, vim.log.levels.ERROR)
+        end
+      end
+    end)
+  end, { 
+    buffer = bufnr, 
+    desc = "Commit with message",
+    noremap = true,  -- Don't allow remapping
+    silent = true    -- Don't show in command line
+  })
 
   vim.keymap.set('n', '<Tab>', function()
     local line_num = vim.api.nvim_win_get_cursor(0)[1]
@@ -381,18 +347,17 @@ end
 
 -- Open git status buffer
 function M.open_git_status()
-  -- Check if we're in a git repository
-  local _ = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null")
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Not in a git repository", vim.log.levels.ERROR)
-    return
-  end
-
   -- Check if current buffer is already valid and reuse it
   if M._current_buffer then
     -- Switch to existing buffer and refresh
     vim.api.nvim_set_current_buf(M._current_buffer)
-    M.refresh_git_status()
+    return
+  end
+
+  -- Check if we're in a git repository
+  local _ = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null")
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
@@ -442,14 +407,6 @@ end
 -- Setup
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
-
-  -- Setup highlights
-  setup_highlights()
-
-  -- Re-setup highlights when colorscheme changes
-  vim.api.nvim_create_autocmd("ColorScheme", {
-    callback = setup_highlights,
-  })
 
   -- Commands
   vim.api.nvim_create_user_command("GitStatus", M.open_git_status, {})
