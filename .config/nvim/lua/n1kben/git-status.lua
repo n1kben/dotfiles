@@ -228,11 +228,11 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         end
       end
     end)
-  end, { 
-    buffer = bufnr, 
+  end, {
+    buffer = bufnr,
     desc = "Commit with message",
-    noremap = true,  -- Don't allow remapping
-    silent = true    -- Don't show in command line
+    noremap = true, -- Don't allow remapping
+    silent = true   -- Don't show in command line
   })
 
   vim.keymap.set('n', '<Tab>', function()
@@ -240,41 +240,27 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
-      -- Determine current status and toggle
-      local is_staged = false
-      local is_modified = false
-      local is_untracked = false
+      -- Determine which section we're in by checking lines above current position
+      local current_line_num = vim.api.nvim_win_get_cursor(0)[1]
+      local buffer_lines = vim.api.nvim_buf_get_lines(0, 0, current_line_num, false)
+      local in_staged_section = false
 
-      -- Check which section the file is in
-      for _, item in ipairs(git_data.staged) do
-        if item.file == file then
-          is_staged = true
+      -- Find the most recent section header above current line
+      for i = #buffer_lines, 1, -1 do
+        local line = buffer_lines[i]
+        if line:match("Changes to be committed:") then
+          in_staged_section = true
+          break
+        elseif line:match("Changes not staged for commit:") or line:match("Untracked files:") then
+          in_staged_section = false
           break
         end
       end
 
-      if not is_staged then
-        for _, item in ipairs(git_data.modified) do
-          if item.file == file then
-            is_modified = true
-            break
-          end
-        end
-      end
-
-      if not is_staged and not is_modified then
-        for _, item in ipairs(git_data.untracked) do
-          if item.file == file then
-            is_untracked = true
-            break
-          end
-        end
-      end
-
-      -- Perform stage/unstage operation
+      -- Perform stage/unstage operation based on section
       local cmd_result
-      if is_staged then
-        -- Unstage the file - use different commands based on repo state
+      if in_staged_section then
+        -- We're in staged section, so unstage
         local has_commits = vim.fn.system("git rev-parse --verify HEAD 2>/dev/null")
         if vim.v.shell_error == 0 then
           -- Has commits, can use reset HEAD
@@ -284,7 +270,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
           cmd_result = vim.fn.system("git rm --cached " .. vim.fn.shellescape(file))
         end
       else
-        -- Stage the file (works for both modified and untracked)
+        -- We're in modified/untracked section, so stage
         cmd_result = vim.fn.system("git add " .. vim.fn.shellescape(file))
       end
 
