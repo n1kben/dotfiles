@@ -1,8 +1,5 @@
 return {
   "nvim-lualine/lualine.nvim",
-  dependencies = {
-    "lewis6991/gitsigns.nvim",
-  },
   event = "BufRead",
   config = function()
     local lualine = require("lualine")
@@ -43,7 +40,11 @@ return {
         lualine_b = { "filename", "location" },
         lualine_c = {},
         lualine_x = {},
-        lualine_y = { "diagnostics", { 'b:gitsigns_head', padding = { left = 1, right = 1 } }, { 'diff', padding = { left = 1 } } },
+        lualine_y = {
+          "diagnostics",
+          { "branch", icon = "" },
+          { 'diff',   padding = { left = 1 } },
+        },
         lualine_z = {},
       },
     })

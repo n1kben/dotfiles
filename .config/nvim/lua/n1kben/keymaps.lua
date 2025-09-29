@@ -45,10 +45,10 @@ vim.keymap.set("n", "V", "v$h", { desc = "Select to end of line" })
 vim.keymap.set("n", "Y", "y$", { desc = "Yank to end of line" })
 
 -- Windows
-vim.keymap.set("n", "<C-l>", "<C-W><C-L>", { desc = "Move to left window" })
-vim.keymap.set("n", "<C-k>", "<C-W><C-K>", { desc = "Move to upper window" })
-vim.keymap.set("n", "<C-j>", "<C-W><C-J>", { desc = "Move to lower window" })
-vim.keymap.set("n", "<C-h>", "<C-W><C-H>", { desc = "Move to right window" })
+-- vim.keymap.set("n", "<C-l>", "<C-W><C-L>", { desc = "Move to left window" })
+-- vim.keymap.set("n", "<C-k>", "<C-W><C-K>", { desc = "Move to upper window" })
+-- vim.keymap.set("n", "<C-j>", "<C-W><C-J>", { desc = "Move to lower window" })
+-- vim.keymap.set("n", "<C-h>", "<C-W><C-H>", { desc = "Move to right window" })
 
 -- Indentation
 vim.keymap.set("n", "<Tab>", ">>", { desc = "Indent right" })

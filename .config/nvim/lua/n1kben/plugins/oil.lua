@@ -58,6 +58,7 @@ return {
 
 
     local opts = {
+      columns = {},
       use_default_keymaps = false,
       delete_to_trash = true,
       skip_confirm_for_simple_edits = true,
