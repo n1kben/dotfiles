@@ -1,6 +1,9 @@
 return {
   "stevearc/oil.nvim",
   lazy = false,
+  keys = {
+    { "-", "<cmd>Oil<cr>", { desc = "Oil: Open current directory" } },
+  },
   config = function()
     local oil = require("oil")
 
