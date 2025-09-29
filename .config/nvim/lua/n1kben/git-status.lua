@@ -91,7 +91,7 @@ local function format_git_status_content(git_data)
   line_num = line_num + 1
 
   -- Add help text at top
-  table.insert(lines, "Press <CR> to open file, gd for diff, <Tab> to stage/unstage, gk to commit")
+  table.insert(lines, "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, gk to commit")
   highlight_map[line_num] = "GitStatusInstructions"
   line_num = line_num + 1
 
@@ -155,61 +155,57 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
+      -- Check if file is staged or modified to determine diff command
+      local is_staged = false
+      for _, item in ipairs(git_data.staged) do
+        if item.file == file then
+          is_staged = true
+          break
+        end
+      end
+
+      local diff_cmd
+      if is_staged then
+        -- Show diff of staged changes (what will be committed)
+        diff_cmd = "git diff --cached " .. vim.fn.shellescape(file)
+      else
+        -- Show diff of unstaged changes
+        diff_cmd = "git diff " .. vim.fn.shellescape(file)
+      end
+
+      -- Get diff output
+      local diff_output = vim.fn.system(diff_cmd)
+      if vim.v.shell_error ~= 0 then
+        vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
+        return
+      end
+
+      -- Create diff buffer
+      local diff_bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_option(diff_bufnr, 'buftype', 'nofile')
+      vim.api.nvim_buf_set_option(diff_bufnr, 'filetype', 'diff')
+      vim.api.nvim_buf_set_name(diff_bufnr, 'Diff: ' .. file)
+
+      -- Set diff content
+      local lines = vim.split(diff_output, '\n')
+      vim.api.nvim_buf_set_lines(diff_bufnr, 0, -1, false, lines)
+      vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', false)
+
+      -- Open diff buffer
+      vim.api.nvim_set_current_buf(diff_bufnr)
+    end
+  end, { buffer = bufnr, desc = "Open diff for file under cursor" })
+
+
+  vim.keymap.set('n', 'gd', function()
+    local line_num = vim.api.nvim_win_get_cursor(0)[1]
+    local file = file_map[line_num]
+
+    if file then
       -- Open the file in a new buffer
       vim.cmd('edit ' .. vim.fn.fnameescape(file))
     end
   end, { buffer = bufnr, desc = "Open file under cursor" })
-
-  -- Try multiple key combinations that might work for Shift+Enter
-  local function create_diff_handler()
-    return function()
-      local line_num = vim.api.nvim_win_get_cursor(0)[1]
-      local file = file_map[line_num]
-
-      if file then
-        -- Check if file is staged or modified to determine diff command
-        local is_staged = false
-        for _, item in ipairs(git_data.staged) do
-          if item.file == file then
-            is_staged = true
-            break
-          end
-        end
-
-        local diff_cmd
-        if is_staged then
-          -- Show diff of staged changes (what will be committed)
-          diff_cmd = "git diff --cached " .. vim.fn.shellescape(file)
-        else
-          -- Show diff of unstaged changes
-          diff_cmd = "git diff " .. vim.fn.shellescape(file)
-        end
-
-        -- Get diff output
-        local diff_output = vim.fn.system(diff_cmd)
-        if vim.v.shell_error ~= 0 then
-          vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
-          return
-        end
-
-        -- Create diff buffer
-        local diff_bufnr = vim.api.nvim_create_buf(false, true)
-        vim.api.nvim_buf_set_option(diff_bufnr, 'buftype', 'nofile')
-        vim.api.nvim_buf_set_option(diff_bufnr, 'filetype', 'diff')
-        vim.api.nvim_buf_set_name(diff_bufnr, 'Diff: ' .. file)
-
-        -- Set diff content
-        local lines = vim.split(diff_output, '\n')
-        vim.api.nvim_buf_set_lines(diff_bufnr, 0, -1, false, lines)
-        vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', false)
-
-        -- Open diff buffer
-        vim.api.nvim_set_current_buf(diff_bufnr)
-      end
-    end
-  end
-
-  vim.keymap.set('n', 'gd', create_diff_handler(), { buffer = bufnr, desc = "Open diff for file under cursor" })
 
   vim.keymap.set('n', 'gk', function()
     -- Use callback version of vim.ui.input
