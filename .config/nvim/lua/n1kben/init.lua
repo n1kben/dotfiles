@@ -4,11 +4,21 @@ require("n1kben.options")
 require("n1kben.lsp")
 require("n1kben.formatters")
 require("n1kben.regex-popup").setup()
-require("n1kben.todo")
+
+-- Todo
+require("n1kben.todo").setup({})
+
+-- Alternate
 require("n1kben.alternate").setup({
-  dual_patterns = {
-    { "*.res",  "*_sandbox.res", "Source File",     "Sandbox File" },
-    { "*.res",  "*.bs.mjs",      "ReScript Source", "Compiled JS" },
-    { "*.resi", "*.res",         "Interface File",  "Implementation File" },
+  patterns = {
+    -- Rescript
+    { { "*.res", "Source" },         { "*.bs.mjs", "Compiled" } },
+    { { "*.res", "Source" },         { "*_sandbox.res", "Sandbox " } },
+    { { "*.res", "Source" },         { "*_test.res", "Test " } },
+    { { "*.res", "Implementation" }, { "*.resi", "Interface" } },
+
+    -- TypeScript
+    { { "*.tsx", "Source" },         { "*_sandbox.tsx", "Sandbox " } },
+    { { "*.ts", "Source" },          { "*_test.ts", "Test " } },
   }
 })
