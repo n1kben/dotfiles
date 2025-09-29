@@ -29,7 +29,7 @@ git() {
   local arg
   for arg in "${@:2}"; do
     case "$arg" in
-      --all|-A|.|*\**) # "All files" patterns
+      --all|-A|-|.|*\**) # "All files" patterns
         command git "$@"
         return
         ;;

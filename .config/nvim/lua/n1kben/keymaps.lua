@@ -69,8 +69,8 @@ vim.keymap.set(
 )
 
 -- Diagnostics
-vim.keymap.set("n", "<leader>j", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
-vim.keymap.set("n", "<leader>k", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
+vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
 
 -- LSP
 vim.keymap.set("n", "gk", vim.lsp.buf.hover, { desc = "Hover" })
