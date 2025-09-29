@@ -160,6 +160,24 @@ PROMPT='%F{blue}%1~%f%F{green}${vcs_info_msg_0_}%f λ '
 RPROMPT='%F{black}%~%f'
 
 
+# Title
+# ----------------------------
+DISABLE_AUTO_TITLE="true"
+precmd() {
+  # Try to get the git repo root (quietly)
+  local git_root
+  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+  if [[ -n "$git_root" ]]; then
+    # Use the basename of the repo root
+    echo -ne "\e]1;${git_root##*/}\a"
+  else
+    # Fallback: just show current dir name
+    echo -ne "\e]1;${PWD##*/}\a"
+  fi
+}
+
+
 # Syntax highlighting (must the last line)
 # ----------------------------
 source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
