@@ -16,38 +16,38 @@ brew() {
 export GIT_MERGE_AUTOEDIT=no
 
 git() {
-  local fzf_commands=("add" "rm" "checkout" "diff")
   local cmd="$1"
+  local fzf_eligible_commands=("add" "rm" "checkout" "diff")
 
-  # Check if this command should use fzf and no files are specified
-  if [[ " ${fzf_commands[*]} " =~ " $cmd " ]]; then
-    # Check arguments for "all files" flags or existing file paths
-    local arg
-    for arg in "${@:2}"; do
-      case "$arg" in
-        --all|-A|.|*\**) 
-          command git "$@"
-          return
-          ;;
-        -*) 
-          continue # Skip other flags
-          ;;
-        *) 
-          # Non-flag argument, assume it's a file - run normally
-          command git "$@"
-          return
-          ;;
-      esac
-    done
-
-    # No files specified, use fzf file selection
-    local selected_files
-    selected_files=$(fzg files)
-    [[ -z "$selected_files" ]] && return 1
-    command git "$@" $selected_files
-  else
+  # Commands that don't use fzf - run git normally
+  if [[ ! " ${fzf_eligible_commands[*]} " =~ " $cmd " ]]; then
     command git "$@"
+    return
   fi
+
+  # Check if we should skip fzf (files already specified or "all files" flags)
+  local arg
+  for arg in "${@:2}"; do
+    case "$arg" in
+      --all|-A|.|*\**) # "All files" patterns
+        command git "$@"
+        return
+        ;;
+      -*) # Skip flags
+        continue
+        ;;
+      *) # Found a file argument
+        command git "$@"
+        return
+        ;;
+    esac
+  done
+
+  # No files specified - use fzf for file selection
+  local selected_files
+  selected_files=$(fzg files)
+  [[ -z "$selected_files" ]] && return 1  # User cancelled
+  command git "$@" $selected_files
 }
 
 alias gf="fzg files"
@@ -93,11 +93,22 @@ alias cat="bat -p --pager=never"
 export CLICOLOR=1
 
 # cd
+cd() {
+  # If no arguments, use fzf to select directory
+  if [[ $# -eq 0 ]]; then
+    local selected_dir
+    selected_dir=$(fd -t d -H . | fzf)
+    [[ -z "$selected_dir" ]] && return 1  # User cancelled
+    builtin cd "$selected_dir"
+  else
+    builtin cd "$@"
+  fi
+}
+
 alias -- -='cd -'
 alias ..="cd ../"
 alias ...="cd ../../"
 alias ....="cd ../../../"
-cdl() { cd "$1" && ls }
 
 # ls
 alias l="ls -l"
@@ -107,6 +118,19 @@ alias la="ls -la"
 # mkdir
 alias mkdir="mkdir -p"
 mkcd() { mkdir -p "$1" && cd "$1" }
+
+# rm
+rm() {
+  # If no arguments, use fzf to select files
+  if [[ $# -eq 0 ]]; then
+    local selected_files
+    selected_files=$(fzg files)
+    [[ -z "$selected_files" ]] && return 1  # User cancelled
+    command rm $selected_files
+  else
+    command rm "$@"
+  fi
+}
 
 # shortcuts
 alias c="clear"
