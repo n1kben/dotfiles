@@ -7,7 +7,7 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup("n1kben/plugins", {
-  defaults = { lazy = true },
+  defaults = { lazy = false },
   checker = { enabled = false },
   change_detection = { enabled = false },
   --dev = {

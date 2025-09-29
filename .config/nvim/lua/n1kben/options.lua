@@ -23,7 +23,7 @@ vim.opt.undodir = vim.fn.stdpath("cache") .. "/undo"
 vim.opt.scrolloff = 7
 
 -- Line
-vim.opt.number = false
+vim.opt.number = true
 vim.opt.wrap = false
 vim.opt.cursorline = true
 vim.opt.list = true -- Hint characters
