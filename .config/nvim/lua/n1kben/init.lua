@@ -8,6 +8,9 @@ require("n1kben.regex-popup").setup()
 -- Todo
 require("n1kben.todo").setup({})
 
+-- Git Status
+require("n1kben.git-status").setup({})
+
 -- Alternate
 require("n1kben.alternate").setup({
   patterns = {

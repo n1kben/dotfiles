@@ -84,6 +84,11 @@ vim.keymap.set("n", "<leader>x", function()
   require("n1kben.regex-popup").show_regex_popup()
 end, { desc = "Show regex popup with highlights" })
 
+-- Git status
+vim.keymap.set("n", "<leader>g", function()
+  require("n1kben.git-status").open_git_status()
+end, { desc = "Open git status buffer" })
+
 -- Reload config
 vim.keymap.set("n", "R", function()
   dofile(vim.env.MYVIMRC)

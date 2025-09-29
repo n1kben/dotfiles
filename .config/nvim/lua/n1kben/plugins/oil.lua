@@ -1,19 +1,6 @@
--- helper function to check if a value is in a list
-local function in_list(val, list)
-  for _, v in ipairs(list) do
-    if v == val then
-      return true
-    end
-  end
-  return false
-end
-
 return {
   "stevearc/oil.nvim",
   lazy = false,
-  keys = {
-    { "-", "<cmd>Oil<cr>", { desc = "Oil: Open current directory" } },
-  },
   config = function()
     local oil = require("oil")
 
