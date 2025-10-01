@@ -10,7 +10,7 @@ brew "git-delta"
 brew "jq"
 brew "tree-sitter"
 brew "neovim"
-brew "postgresql@14"
+brew "postgresql@14", restart_service: :changed
 brew "python@3.13"
 brew "ripgrep"
 brew "stow"

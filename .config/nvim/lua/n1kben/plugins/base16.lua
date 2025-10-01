@@ -1,6 +1,6 @@
 return {
   "RRethy/base16-nvim",
-  lazy = false,
+  enabled = false,
   init = function()
     vim.api.nvim_create_autocmd("OptionSet", {
       pattern = "background",

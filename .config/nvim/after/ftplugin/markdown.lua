@@ -1,5 +1,7 @@
 vim.opt_local.wrap = true
 vim.opt_local.linebreak = true
+vim.opt_local.conceallevel = 2
+vim.opt_local.concealcursor = "ncv"
 
 local function get_relative_date(date_str)
   local year, month, day = date_str:match("(%d%d%d%d)-(%d%d)-(%d%d)")
