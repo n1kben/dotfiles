@@ -361,6 +361,7 @@ function M.open_git_status()
   if M._current_buffer and vim.api.nvim_buf_is_valid(M._current_buffer) then
     -- Switch to existing buffer and refresh
     vim.api.nvim_set_current_buf(M._current_buffer)
+    M.refresh_git_status()
     return
   else
     -- Clear invalid buffer reference
