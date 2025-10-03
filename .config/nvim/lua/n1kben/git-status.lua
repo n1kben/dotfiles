@@ -6,20 +6,20 @@ M.config = {}
 
 -- Setup highlight groups for git status
 local function setup_highlights()
-  -- Section headers - white
-  vim.api.nvim_set_hl(0, "GitStatusHeader", { fg = "#FFFFFF" }) -- White
+  -- Section headers - use Normal foreground for better theme compatibility
+  vim.api.nvim_set_hl(0, "GitStatusHeader", { link = "Normal" })
 
-  -- File statuses - better colors
-  vim.api.nvim_set_hl(0, "GitStatusStaged", { fg = "#98C379" })    -- Nice green (changes to be committed)
-  vim.api.nvim_set_hl(0, "GitStatusModified", { fg = "#E06C75" })  -- Nice red (not staged for commit)
-  vim.api.nvim_set_hl(0, "GitStatusUntracked", { fg = "#E06C75" }) -- Nice red (untracked files)
+  -- File statuses - use vim's diagnostic colors
+  vim.api.nvim_set_hl(0, "GitStatusStaged", { link = "DiagnosticOk" })    -- Green for staged changes
+  vim.api.nvim_set_hl(0, "GitStatusModified", { link = "DiagnosticWarn" }) -- Orange/yellow for modified
+  vim.api.nvim_set_hl(0, "GitStatusUntracked", { link = "DiagnosticError" }) -- Red for untracked
 
-  -- Instructions and empty messages - gray
-  vim.api.nvim_set_hl(0, "GitStatusInstructions", { fg = "#808080" }) -- Gray
-  vim.api.nvim_set_hl(0, "GitStatusEmpty", { fg = "#808080" })        -- Gray
+  -- Instructions and empty messages - use comment color
+  vim.api.nvim_set_hl(0, "GitStatusInstructions", { link = "Comment" })
+  vim.api.nvim_set_hl(0, "GitStatusEmpty", { link = "Comment" })
 
-  -- Branch info - cyan
-  vim.api.nvim_set_hl(0, "GitStatusBranch", { fg = "#56B6C2" }) -- Cyan
+  -- Branch info - use Normal color for theme compatibility
+  vim.api.nvim_set_hl(0, "GitStatusBranch", { link = "Normal" })
 end
 
 -- Git status sections with their display names
