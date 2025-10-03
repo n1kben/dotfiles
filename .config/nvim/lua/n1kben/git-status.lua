@@ -205,13 +205,20 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
           -- Show diff of staged changes (what will be committed)
           diff_cmd = "git diff --cached " .. vim.fn.shellescape(file)
         else
-          -- Show diff of unstaged changes
-          diff_cmd = "git diff " .. vim.fn.shellescape(file)
+          -- Check if file exists to determine the right diff command
+          local file_exists = vim.fn.filereadable(file) == 1
+          if file_exists then
+            -- Show diff of unstaged changes for existing files
+            diff_cmd = "git diff " .. vim.fn.shellescape(file)
+          else
+            -- For deleted files, compare with HEAD
+            diff_cmd = "git diff HEAD -- " .. vim.fn.shellescape(file)
+          end
         end
 
         -- Get diff output
         local diff_output = vim.fn.system(diff_cmd)
-        if vim.v.shell_error ~= 0 then
+        if vim.v.shell_error ~= 0 and diff_output == "" then
           vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
           return
         end
@@ -239,8 +246,42 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
-      -- Open the file in a new buffer
-      vim.cmd('edit ' .. vim.fn.fnameescape(file))
+      local file_exists = vim.fn.filereadable(file) == 1
+      if file_exists then
+        -- Open existing file normally
+        vim.cmd('edit ' .. vim.fn.fnameescape(file))
+      else
+        -- For deleted files, get content from HEAD and create editable buffer
+        local file_content_output = vim.fn.system("git show HEAD:" .. vim.fn.shellescape(file))
+        if vim.v.shell_error ~= 0 then
+          vim.notify("Failed to get content for deleted file " .. file, vim.log.levels.ERROR)
+          return
+        end
+
+        -- Create new buffer for the deleted file
+        local new_bufnr = vim.api.nvim_create_buf(false, false)
+        vim.api.nvim_buf_set_name(new_bufnr, file)
+        
+        -- Set file content from HEAD
+        local lines = vim.split(file_content_output, '\n')
+        -- Remove empty last line if present (common with git show)
+        if #lines > 0 and lines[#lines] == "" then
+          table.remove(lines)
+        end
+        vim.api.nvim_buf_set_lines(new_bufnr, 0, -1, false, lines)
+        
+        -- Set filetype for syntax highlighting
+        local filetype = vim.fn.fnamemodify(file, ":e")
+        if filetype ~= "" then
+          vim.api.nvim_buf_set_option(new_bufnr, 'filetype', filetype)
+        end
+        
+        -- Don't mark as modified initially so it can be closed without saving
+        vim.api.nvim_buf_set_option(new_bufnr, 'modified', false)
+        
+        -- Open the buffer
+        vim.api.nvim_set_current_buf(new_bufnr)
+      end
     end
   end, { buffer = bufnr, desc = "Open file under cursor" })
 
