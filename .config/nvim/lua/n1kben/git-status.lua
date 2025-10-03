@@ -10,8 +10,8 @@ local function setup_highlights()
   vim.api.nvim_set_hl(0, "GitStatusHeader", { link = "Normal" })
 
   -- File statuses - use vim's diagnostic colors
-  vim.api.nvim_set_hl(0, "GitStatusStaged", { link = "DiagnosticOk" })    -- Green for staged changes
-  vim.api.nvim_set_hl(0, "GitStatusModified", { link = "DiagnosticWarn" }) -- Orange/yellow for modified
+  vim.api.nvim_set_hl(0, "GitStatusStaged", { link = "DiagnosticOk" })       -- Green for staged changes
+  vim.api.nvim_set_hl(0, "GitStatusModified", { link = "DiagnosticWarn" })   -- Orange/yellow for modified
   vim.api.nvim_set_hl(0, "GitStatusUntracked", { link = "DiagnosticError" }) -- Red for untracked
 
   -- Instructions and empty messages - use comment color
@@ -91,7 +91,8 @@ local function format_git_status_content(git_data)
   line_num = line_num + 1
 
   -- Add help text at top
-  table.insert(lines, "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, gk to commit, <BS> to checkout")
+  table.insert(lines,
+    "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, gk to commit, <BS> to checkout/delete")
   highlight_map[line_num] = "GitStatusInstructions"
   line_num = line_num + 1
 
@@ -155,46 +156,82 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
-      -- Check if file is staged or modified to determine diff command
-      local is_staged = false
-      for _, item in ipairs(git_data.staged) do
+      -- Check if file is untracked
+      local is_untracked = false
+      for _, item in ipairs(git_data.untracked) do
         if item.file == file then
-          is_staged = true
+          is_untracked = true
           break
         end
       end
 
-      local diff_cmd
-      if is_staged then
-        -- Show diff of staged changes (what will be committed)
-        diff_cmd = "git diff --cached " .. vim.fn.shellescape(file)
+      if is_untracked then
+        -- For untracked files, show file content instead of diff
+        local file_content = vim.fn.readfile(file)
+        if vim.v.shell_error ~= 0 then
+          vim.notify("Failed to read file " .. file, vim.log.levels.ERROR)
+          return
+        end
+
+        -- Create content buffer
+        local content_bufnr = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_option(content_bufnr, 'buftype', 'nofile')
+        vim.api.nvim_buf_set_name(content_bufnr, 'Content: ' .. file)
+
+        -- Set filetype based on file extension for syntax highlighting
+        local filetype = vim.fn.fnamemodify(file, ":e")
+        if filetype ~= "" then
+          vim.api.nvim_buf_set_option(content_bufnr, 'filetype', filetype)
+        end
+
+        -- Set file content
+        vim.api.nvim_buf_set_lines(content_bufnr, 0, -1, false, file_content)
+        vim.api.nvim_buf_set_option(content_bufnr, 'modifiable', false)
+
+        -- Open content buffer
+        vim.api.nvim_set_current_buf(content_bufnr)
       else
-        -- Show diff of unstaged changes
-        diff_cmd = "git diff " .. vim.fn.shellescape(file)
+        -- For tracked files, show diff as before
+        local is_staged = false
+        for _, item in ipairs(git_data.staged) do
+          if item.file == file then
+            is_staged = true
+            break
+          end
+        end
+
+        local diff_cmd
+        if is_staged then
+          -- Show diff of staged changes (what will be committed)
+          diff_cmd = "git diff --cached " .. vim.fn.shellescape(file)
+        else
+          -- Show diff of unstaged changes
+          diff_cmd = "git diff " .. vim.fn.shellescape(file)
+        end
+
+        -- Get diff output
+        local diff_output = vim.fn.system(diff_cmd)
+        if vim.v.shell_error ~= 0 then
+          vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
+          return
+        end
+
+        -- Create diff buffer
+        local diff_bufnr = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_option(diff_bufnr, 'buftype', 'nofile')
+        vim.api.nvim_buf_set_option(diff_bufnr, 'filetype', 'diff')
+        vim.api.nvim_buf_set_name(diff_bufnr, 'Diff: ' .. file)
+
+        -- Set diff content
+        local lines = vim.split(diff_output, '\n')
+        vim.api.nvim_buf_set_lines(diff_bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', false)
+
+        -- Open diff buffer
+        vim.api.nvim_set_current_buf(diff_bufnr)
       end
-
-      -- Get diff output
-      local diff_output = vim.fn.system(diff_cmd)
-      if vim.v.shell_error ~= 0 then
-        vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
-        return
-      end
-
-      -- Create diff buffer
-      local diff_bufnr = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_buf_set_option(diff_bufnr, 'buftype', 'nofile')
-      vim.api.nvim_buf_set_option(diff_bufnr, 'filetype', 'diff')
-      vim.api.nvim_buf_set_name(diff_bufnr, 'Diff: ' .. file)
-
-      -- Set diff content
-      local lines = vim.split(diff_output, '\n')
-      vim.api.nvim_buf_set_lines(diff_bufnr, 0, -1, false, lines)
-      vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', false)
-
-      -- Open diff buffer
-      vim.api.nvim_set_current_buf(diff_bufnr)
     end
-  end, { buffer = bufnr, desc = "Open diff for file under cursor" })
+  end, { buffer = bufnr, desc = "Open diff/content for file under cursor" })
 
 
   vim.keymap.set('n', 'gd', function()
@@ -293,21 +330,45 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
-      -- Confirm before checkout
-      local confirm = vim.fn.confirm("Checkout " .. file .. "? This will discard all changes.", "&Y\n&n", 1)
-      if confirm == 1 then
-        local cmd_result = vim.fn.system("git checkout -- " .. vim.fn.shellescape(file))
-
-        if vim.v.shell_error ~= 0 then
-          vim.notify("Git checkout failed: " .. cmd_result, vim.log.levels.ERROR)
-          return
+      -- Check if file is untracked
+      local is_untracked = false
+      for _, item in ipairs(git_data.untracked) do
+        if item.file == file then
+          is_untracked = true
+          break
         end
+      end
 
-        -- Refresh the buffer
-        M.refresh_git_status()
+      if is_untracked then
+        -- For untracked files, offer to delete them
+        local confirm = vim.fn.confirm("Delete untracked file " .. file .. "? This cannot be undone.", "&Y\n&n", 1)
+        if confirm == 1 then
+          local success = vim.fn.delete(file)
+          if success == 0 then
+            vim.notify("Deleted " .. file, vim.log.levels.INFO)
+            -- Refresh the buffer
+            M.refresh_git_status()
+          else
+            vim.notify("Failed to delete " .. file, vim.log.levels.ERROR)
+          end
+        end
+      else
+        -- For tracked files, checkout as before
+        local confirm = vim.fn.confirm("Checkout " .. file .. "? This will discard all changes.", "&Y\n&n", 1)
+        if confirm == 1 then
+          local cmd_result = vim.fn.system("git checkout -- " .. vim.fn.shellescape(file))
+
+          if vim.v.shell_error ~= 0 then
+            vim.notify("Git checkout failed: " .. cmd_result, vim.log.levels.ERROR)
+            return
+          end
+
+          -- Refresh the buffer
+          M.refresh_git_status()
+        end
       end
     end
-  end, { buffer = bufnr, desc = "Checkout file under cursor (discard changes)" })
+  end, { buffer = bufnr, desc = "Checkout/delete file under cursor" })
 end
 
 -- Create and configure git status buffer
