@@ -74,6 +74,14 @@ return {
       end,
       { desc = "FZF: Resume" },
     },
+    {
+      "<leader>u",
+      mode = "n",
+      function()
+        require("n1kben.undo-tree").pick()
+      end,
+      { desc = "FZF: Undo tree" },
+    },
   },
   config = function()
     local fzf = require("fzf-lua")
