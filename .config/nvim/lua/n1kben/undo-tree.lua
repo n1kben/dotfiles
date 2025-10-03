@@ -127,8 +127,125 @@ local function build_undolist()
   -- Build the undo list with diffs
   local undolist = traverse_undotree(ut.entries, 0)
   
+  -- Add the original state (sequence 0) if we have any undo history
+  if #undolist > 0 then
+    -- Navigate to sequence 1 to get the diff from original to first change
+    local success = pcall(function()
+      vim.cmd("silent undo 1")
+    end)
+    
+    if success then
+      local buffer_after_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false) or {}
+      local buffer_after = table.concat(buffer_after_lines, "\n")
+      
+      -- Go to original state (before any changes)
+      vim.cmd("silent undo 0")
+      local buffer_before_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false) or {}
+      local buffer_before = table.concat(buffer_before_lines, "\n")
+      
+      -- Create diff for original state
+      local diff = vim.diff(buffer_before, buffer_after, {
+        result_type = "unified",
+        ctxlen = 1,
+      })
+      
+      -- Extract additions and deletions
+      local additions = {}
+      local deletions = {}
+      local ordinal = ""
+      
+      if diff then
+        for line in (diff .. "\n"):gmatch("(.-)\n") do
+          if line:sub(1, 1) == "+" then
+            local content = line:sub(2, -1)
+            table.insert(additions, content)
+            ordinal = ordinal .. content
+          elseif line:sub(1, 1) == "-" then
+            local content = line:sub(2, -1)
+            table.insert(deletions, content)
+            ordinal = ordinal .. content
+          end
+        end
+      end
+      
+      -- Create diffstat for original state
+      local diffstat = ""
+      if #additions > 0 then
+        diffstat = "+" .. #additions
+      end
+      if #deletions > 0 then
+        if diffstat ~= "" then
+          diffstat = diffstat .. " "
+        end
+        diffstat = diffstat .. "-" .. #deletions
+      end
+      
+      -- Add original state entry with no diff (it's the baseline)
+      table.insert(undolist, 1, {
+        seq = 0,
+        display = "state #0 (original)",
+        diff = "",  -- No diff for original state
+        additions = {},
+        deletions = {},
+        ordinal = "",
+        time = 0,
+        level = 0,
+      })
+    end
+  end
+  
+  -- Post-process to add undotree-style state markers
+  local current_seq = ut.seq_cur
+  local saved_seq = ut.save_cur or 0
+  local seq_last = ut.seq_last or current_seq
+  
+  -- Sort by sequence number descending (undotree shows latest first)
+  table.sort(undolist, function(a, b) return a.seq > b.seq end)
+  
+  for _, entry in ipairs(undolist) do
+    local seq_str = ""
+    
+    -- Apply undotree's exact marking system:
+    if entry.seq == current_seq then
+      seq_str = string.format(">%d<", entry.seq)  -- Current state: >num<
+    elseif entry.seq > current_seq and entry.seq <= seq_last then
+      seq_str = string.format("{%d}", entry.seq)  -- Redo state: {num}
+    elseif entry.seq == seq_last and entry.seq ~= current_seq then
+      seq_str = string.format("[%d]", entry.seq)  -- Latest state: [num]
+    else
+      seq_str = tostring(entry.seq)  -- Regular state: num
+    end
+    
+    -- Add saved state marker
+    local saved_marker = ""
+    if saved_seq > 0 and entry.seq == saved_seq then
+      saved_marker = " S"  -- Last saved state gets S
+    elseif saved_seq > 0 and entry.seq < saved_seq then
+      -- Check if this is a saved state (multiple saves possible)
+      saved_marker = " s"  -- Previous saved states get s
+    end
+    
+    -- Format like undotree: "seq (time)" 
+    local time_str = entry.time and entry.time > 0 and os.date("(%H:%M:%S)", entry.time) or "(original)"
+    
+    -- Remove tree prefix and recreate in undotree style
+    entry.display = string.format("%s %s%s", seq_str, time_str, saved_marker)
+    
+    -- Keep diffstat for additional info
+    local diffstat = ""
+    if #entry.additions > 0 then
+      diffstat = " +" .. #entry.additions
+    end
+    if #entry.deletions > 0 then
+      diffstat = diffstat .. " -" .. #entry.deletions
+    end
+    if diffstat ~= "" then
+      entry.display = entry.display .. diffstat
+    end
+  end
+  
   -- Restore original state
-  vim.cmd("silent undo " .. ut.seq_cur)
+  vim.cmd("silent undo " .. current_seq)
   vim.api.nvim_win_set_cursor(0, cursor)
   
   return undolist
