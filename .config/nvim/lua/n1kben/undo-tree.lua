@@ -196,8 +196,34 @@ local function build_undolist()
   
   -- Post-process to add undotree-style state markers
   local current_seq = ut.seq_cur
-  local saved_seq = ut.save_cur or 0
   local seq_last = ut.seq_last or current_seq
+  
+  -- Get saved states by parsing the undo tree entries for save markers
+  local saved_states = {}
+  local function collect_saved_states(entries)
+    for _, entry in ipairs(entries) do
+      if entry.save then
+        saved_states[entry.save] = entry.seq
+      end
+      if entry.alt then
+        collect_saved_states(entry.alt)
+      end
+    end
+  end
+  
+  if ut.entries then
+    collect_saved_states(ut.entries)
+  end
+  
+  -- Find the most recent saved state (highest save number)
+  local max_save_num = 0
+  local most_recent_saved_seq = 0
+  for save_num, seq in pairs(saved_states) do
+    if save_num > max_save_num then
+      max_save_num = save_num
+      most_recent_saved_seq = seq
+    end
+  end
   
   -- Sort by sequence number descending (undotree shows latest first)
   table.sort(undolist, function(a, b) return a.seq > b.seq end)
@@ -209,20 +235,25 @@ local function build_undolist()
     if entry.seq == current_seq then
       seq_str = string.format(">%d<", entry.seq)  -- Current state: >num<
     elseif entry.seq > current_seq and entry.seq <= seq_last then
-      seq_str = string.format("{%d}", entry.seq)  -- Redo state: {num}
+      seq_str = string.format("{%d}", entry.seq)  -- Redo state: {num} (future)
     elseif entry.seq == seq_last and entry.seq ~= current_seq then
-      seq_str = string.format("[%d]", entry.seq)  -- Latest state: [num]
+      seq_str = string.format("[%d]", entry.seq)  -- Latest state: [num] (only if different from current)
     else
       seq_str = tostring(entry.seq)  -- Regular state: num
     end
     
-    -- Add saved state marker
+    -- Add saved state markers following undotree's logic
     local saved_marker = ""
-    if saved_seq > 0 and entry.seq == saved_seq then
-      saved_marker = " S"  -- Last saved state gets S
-    elseif saved_seq > 0 and entry.seq < saved_seq then
-      -- Check if this is a saved state (multiple saves possible)
-      saved_marker = " s"  -- Previous saved states get s
+    -- Check if this sequence is any saved state (lowercase s)
+    for _, saved_seq in pairs(saved_states) do
+      if entry.seq == saved_seq then
+        saved_marker = " s"
+        break
+      end
+    end
+    -- Check if this is the most recent saved state (uppercase S)
+    if most_recent_saved_seq > 0 and entry.seq == most_recent_saved_seq then
+      saved_marker = " S"
     end
     
     -- Format like undotree: "seq (time)" 
