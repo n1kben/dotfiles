@@ -453,14 +453,14 @@ function M.pick()
     return
   end
 
-  -- Create entry mapping for lookups
+  -- Create entry mapping for lookups using fzf-lua's nbsp delimiter pattern
   local entry_map = {}
   local items = {}
   
   for _, entry in ipairs(undolist) do
-    -- Use simple string format: display + hidden ordinal content
-    -- fzf will search through everything but we'll extract display for actions
-    local item = entry.display .. " " .. (entry.ordinal or "")
+    -- Use fzf-lua's nbsp delimiter pattern: display + nbsp + ordinal
+    -- This allows fzf to search through ordinal content while displaying only the display part
+    local item = entry.display .. fzf.utils.nbsp .. (entry.ordinal or "")
     entry_map[entry.display] = entry
     table.insert(items, item)
   end
@@ -471,47 +471,38 @@ function M.pick()
       ["default"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before the ordinal content)
-          for display, entry in pairs(entry_map) do
-            if item:find(display, 1, true) == 1 then
-              if entry and entry.seq then
-                vim.cmd("undo " .. entry.seq)
-                vim.notify("Restored to undo state " .. entry.seq, vim.log.levels.INFO)
-              end
-              break
-            end
+          -- Extract display part using fzf-lua's built-in utility
+          local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+          local entry = entry_map[display]
+          if entry and entry.seq then
+            vim.cmd("undo " .. entry.seq)
+            vim.notify("Restored to undo state " .. entry.seq, vim.log.levels.INFO)
           end
         end
       end,
       ["ctrl-y"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before the ordinal content)
-          for display, entry in pairs(entry_map) do
-            if item:find(display, 1, true) == 1 then
-              if entry and entry.additions and #entry.additions > 0 then
-                local register = '"'
-                vim.fn.setreg(register, entry.additions, (#entry.additions > 1) and "V" or "v")
-                vim.notify("Yanked additions to register " .. register, vim.log.levels.INFO)
-              end
-              break
-            end
+          -- Extract display part using fzf-lua's built-in utility
+          local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+          local entry = entry_map[display]
+          if entry and entry.additions and #entry.additions > 0 then
+            local register = '"'
+            vim.fn.setreg(register, entry.additions, (#entry.additions > 1) and "V" or "v")
+            vim.notify("Yanked additions to register " .. register, vim.log.levels.INFO)
           end
         end
       end,
       ["ctrl-d"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before the ordinal content)
-          for display, entry in pairs(entry_map) do
-            if item:find(display, 1, true) == 1 then
-              if entry and entry.deletions and #entry.deletions > 0 then
-                local register = '"'
-                vim.fn.setreg(register, entry.deletions, (#entry.deletions > 1) and "V" or "v")
-                vim.notify("Yanked deletions to register " .. register, vim.log.levels.INFO)
-              end
-              break
-            end
+          -- Extract display part using fzf-lua's built-in utility
+          local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+          local entry = entry_map[display]
+          if entry and entry.deletions and #entry.deletions > 0 then
+            local register = '"'
+            vim.fn.setreg(register, entry.deletions, (#entry.deletions > 1) and "V" or "v")
+            vim.notify("Yanked deletions to register " .. register, vim.log.levels.INFO)
           end
         end
       end,
@@ -519,14 +510,9 @@ function M.pick()
     -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
       local item = items[1]
-      local entry = nil
-      -- Extract display part to find entry
-      for display, e in pairs(entry_map) do
-        if item:find(display, 1, true) == 1 then
-          entry = e
-          break
-        end
-      end
+      -- Extract display part using fzf-lua's built-in utility
+      local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+      local entry = entry_map[display]
       
       if not entry or not entry.diff or entry.diff == "" then
         return "echo 'No diff available'"
@@ -540,6 +526,8 @@ function M.pick()
       ["--no-multi"] = "",
       ["--preview-window"] = "right:50%",
       ["--bind"] = "ctrl-y:accept,ctrl-d:accept",
+      ["--delimiter"] = fzf.utils.nbsp,
+      ["--with-nth"] = "1",  -- Only display the first field (before nbsp)
     },
     winopts = {
       height = 0.8,
