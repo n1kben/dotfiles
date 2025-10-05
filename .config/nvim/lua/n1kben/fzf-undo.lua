@@ -88,11 +88,15 @@ local function traverse_undotree(entries, level)
         if line:sub(1, 1) == "+" then
           local content = line:sub(2, -1)
           table.insert(additions, content)
-          ordinal = ordinal .. content
+          ordinal = ordinal .. " " .. content
         elseif line:sub(1, 1) == "-" then
           local content = line:sub(2, -1)
           table.insert(deletions, content)
-          ordinal = ordinal .. content
+          ordinal = ordinal .. " " .. content
+        elseif line:sub(1, 1) == " " then
+          -- Also include context lines for better search
+          local content = line:sub(2, -1)
+          ordinal = ordinal .. " " .. content
         end
       end
     end
@@ -201,11 +205,15 @@ local function build_undolist()
           if line:sub(1, 1) == "+" then
             local content = line:sub(2, -1)
             table.insert(additions, content)
-            ordinal = ordinal .. content
+            ordinal = ordinal .. " " .. content
           elseif line:sub(1, 1) == "-" then
             local content = line:sub(2, -1)
             table.insert(deletions, content)
-            ordinal = ordinal .. content
+            ordinal = ordinal .. " " .. content
+          elseif line:sub(1, 1) == " " then
+            -- Also include context lines for better search
+            local content = line:sub(2, -1)
+            ordinal = ordinal .. " " .. content
           end
         end
       end
@@ -458,8 +466,12 @@ function M.pick()
   local items = {}
   
   for _, entry in ipairs(undolist) do
+    -- Include both display and ordinal content for searching
+    -- fzf will search through the ordinal content but display only the display part
+    local searchable_item = entry.display .. "\t" .. (entry.ordinal or "")
     entry_map[entry.display] = entry
-    table.insert(items, entry.display)
+    entry_map[searchable_item] = entry
+    table.insert(items, searchable_item)
   end
 
   local opts = {
@@ -468,7 +480,9 @@ function M.pick()
       ["default"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          local entry = entry_map[item]
+          -- Extract display part (before tab) for lookup
+          local display_part = item:match("^([^\t]*)")
+          local entry = entry_map[display_part] or entry_map[item]
           if entry and entry.seq then
             vim.cmd("undo " .. entry.seq)
             vim.notify("Restored to undo state " .. entry.seq, vim.log.levels.INFO)
@@ -478,7 +492,9 @@ function M.pick()
       ["ctrl-y"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          local entry = entry_map[item]
+          -- Extract display part (before tab) for lookup
+          local display_part = item:match("^([^\t]*)")
+          local entry = entry_map[display_part] or entry_map[item]
           if entry and entry.additions and #entry.additions > 0 then
             local register = '"'
             vim.fn.setreg(register, entry.additions, (#entry.additions > 1) and "V" or "v")
@@ -489,7 +505,9 @@ function M.pick()
       ["ctrl-d"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          local entry = entry_map[item]
+          -- Extract display part (before tab) for lookup
+          local display_part = item:match("^([^\t]*)")
+          local entry = entry_map[display_part] or entry_map[item]
           if entry and entry.deletions and #entry.deletions > 0 then
             local register = '"'
             vim.fn.setreg(register, entry.deletions, (#entry.deletions > 1) and "V" or "v")
@@ -500,7 +518,10 @@ function M.pick()
     },
     -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
-      local entry = entry_map[items[1]]
+      -- Extract display part (before tab) for lookup
+      local item = items[1]
+      local display_part = item:match("^([^\t]*)")
+      local entry = entry_map[display_part] or entry_map[item]
       if not entry or not entry.diff or entry.diff == "" then
         return "echo 'No diff available'"
       end
@@ -513,6 +534,8 @@ function M.pick()
       ["--no-multi"] = "",
       ["--preview-window"] = "right:50%",
       ["--bind"] = "ctrl-y:accept,ctrl-d:accept",
+      ["--delimiter"] = "\t",
+      ["--with-nth"] = "1",  -- Only display first field (before tab)
     },
     winopts = {
       height = 0.8,
