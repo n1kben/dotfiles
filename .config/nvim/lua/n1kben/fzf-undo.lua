@@ -458,9 +458,11 @@ function M.pick()
   local items = {}
   
   for _, entry in ipairs(undolist) do
-    -- Use fzf-lua's nbsp delimiter pattern: display + nbsp + ordinal
-    -- This allows fzf to search through ordinal content while displaying only the display part
-    local item = entry.display .. fzf.utils.nbsp .. (entry.ordinal or "")
+    -- Include ordinal content for searching but make it invisible
+    -- Use ANSI escape sequence to hide the ordinal content from display
+    local ordinal = entry.ordinal or ""
+    local hidden_ordinal = ordinal ~= "" and ("\x1b[0;30m" .. ordinal .. "\x1b[0m") or ""
+    local item = entry.display .. " " .. hidden_ordinal
     entry_map[entry.display] = entry
     table.insert(items, item)
   end
@@ -471,8 +473,8 @@ function M.pick()
       ["default"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part using fzf-lua's built-in utility
-          local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+          -- Extract display part (before the hidden ANSI content)
+          local display = item:match("^(.-)%s*\x1b") or item:match("^(.-)%s*$")
           local entry = entry_map[display]
           if entry and entry.seq then
             vim.cmd("undo " .. entry.seq)
@@ -483,8 +485,8 @@ function M.pick()
       ["ctrl-y"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part using fzf-lua's built-in utility
-          local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+          -- Extract display part (before the hidden ANSI content)
+          local display = item:match("^(.-)%s*\x1b") or item:match("^(.-)%s*$")
           local entry = entry_map[display]
           if entry and entry.additions and #entry.additions > 0 then
             local register = '"'
@@ -496,8 +498,8 @@ function M.pick()
       ["ctrl-d"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part using fzf-lua's built-in utility
-          local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+          -- Extract display part (before the hidden ANSI content)
+          local display = item:match("^(.-)%s*\x1b") or item:match("^(.-)%s*$")
           local entry = entry_map[display]
           if entry and entry.deletions and #entry.deletions > 0 then
             local register = '"'
@@ -510,8 +512,8 @@ function M.pick()
     -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
       local item = items[1]
-      -- Extract display part using fzf-lua's built-in utility
-      local display = item:match("^([^" .. fzf.utils.nbsp .. "]*)")
+      -- Extract display part (before the hidden ANSI content)
+      local display = item:match("^(.-)%s*\x1b") or item:match("^(.-)%s*$")
       local entry = entry_map[display]
       
       if not entry or not entry.diff or entry.diff == "" then
@@ -526,8 +528,8 @@ function M.pick()
       ["--no-multi"] = "",
       ["--preview-window"] = "right:50%",
       ["--bind"] = "ctrl-y:accept,ctrl-d:accept",
-      ["--delimiter"] = fzf.utils.nbsp,
-      ["--with-nth"] = "1",  -- Only display the first field (before nbsp)
+      -- Don't restrict search with --with-nth, let fzf search through everything
+      -- but the ordinal content will be hidden from display since it comes after nbsp
     },
     winopts = {
       height = 0.8,
