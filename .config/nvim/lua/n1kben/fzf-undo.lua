@@ -1,5 +1,47 @@
 local M = {}
 
+-- Format time as relative like undotree does
+local function format_relative_time(timestamp)
+  if not timestamp or timestamp == 0 then
+    return "original"
+  end
+  
+  local current_time = os.time()
+  local diff = current_time - timestamp
+  
+  if diff < 0 then
+    return "future"
+  elseif diff < 2 then
+    return "1 second ago"
+  elseif diff < 60 then
+    return string.format("%d seconds ago", diff)
+  elseif diff < 120 then
+    return "1 minute ago"
+  elseif diff < 3600 then
+    return string.format("%d minutes ago", math.floor(diff / 60))
+  elseif diff < 7200 then
+    return "1 hour ago"
+  elseif diff < 86400 then
+    return string.format("%d hours ago", math.floor(diff / 3600))
+  elseif diff < 172800 then
+    return "1 day ago"
+  elseif diff < 604800 then
+    return string.format("%d days ago", math.floor(diff / 86400))
+  elseif diff < 1209600 then
+    return "1 week ago"
+  elseif diff < 2629746 then
+    return string.format("%d weeks ago", math.floor(diff / 604800))
+  elseif diff < 5259492 then
+    return "1 month ago"
+  elseif diff < 31556952 then
+    return string.format("%d months ago", math.floor(diff / 2629746))
+  elseif diff < 63113904 then
+    return "1 year ago"
+  else
+    return string.format("%d years ago", math.floor(diff / 31556952))
+  end
+end
+
 -- Traverse the undo tree and build diff entries just like telescope-undo
 local function traverse_undotree(entries, level)
   local undolist = {}
@@ -257,7 +299,7 @@ local function build_undolist()
     end
     
     -- Format like undotree: "seq (time)" 
-    local time_str = entry.time and entry.time > 0 and os.date("(%H:%M:%S)", entry.time) or "(original)"
+    local time_str = "(" .. format_relative_time(entry.time) .. ")"
     
     -- Remove tree prefix and recreate in undotree style
     entry.display = string.format("%s %s%s", seq_str, time_str, saved_marker)

@@ -78,7 +78,7 @@ return {
       "<leader>u",
       mode = "n",
       function()
-        require("n1kben.undo-tree").pick()
+        require("n1kben.fzf-undo").pick()
       end,
       { desc = "FZF: Undo tree" },
     },
