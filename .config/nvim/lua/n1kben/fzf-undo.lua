@@ -1,45 +1,31 @@
 local M = {}
 
--- Format time as relative like undotree does
 local function format_relative_time(timestamp)
-  if not timestamp or timestamp == 0 then
-    return "original"
+  if not timestamp or timestamp == 0 then return "original" end
+  
+  local diff = os.time() - timestamp
+  if diff < 0 then return "future" end
+  
+  local units = {
+    {31556952, "year"},   -- seconds in a year
+    {2629746, "month"},   -- seconds in a month  
+    {604800, "week"},     -- seconds in a week
+    {86400, "day"},       -- seconds in a day
+    {3600, "hour"},       -- seconds in an hour
+    {60, "minute"},       -- seconds in a minute
+    {1, "second"}         -- seconds
+  }
+  
+  for _, unit in ipairs(units) do
+    local seconds, name = unit[1], unit[2]
+    local count = math.floor(diff / seconds)
+    if count > 0 then
+      return count == 1 and string.format("1 %s ago", name) 
+                        or string.format("%d %ss ago", count, name)
+    end
   end
   
-  local current_time = os.time()
-  local diff = current_time - timestamp
-  
-  if diff < 0 then
-    return "future"
-  elseif diff < 2 then
-    return "1 second ago"
-  elseif diff < 60 then
-    return string.format("%d seconds ago", diff)
-  elseif diff < 120 then
-    return "1 minute ago"
-  elseif diff < 3600 then
-    return string.format("%d minutes ago", math.floor(diff / 60))
-  elseif diff < 7200 then
-    return "1 hour ago"
-  elseif diff < 86400 then
-    return string.format("%d hours ago", math.floor(diff / 3600))
-  elseif diff < 172800 then
-    return "1 day ago"
-  elseif diff < 604800 then
-    return string.format("%d days ago", math.floor(diff / 86400))
-  elseif diff < 1209600 then
-    return "1 week ago"
-  elseif diff < 2629746 then
-    return string.format("%d weeks ago", math.floor(diff / 604800))
-  elseif diff < 5259492 then
-    return "1 month ago"
-  elseif diff < 31556952 then
-    return string.format("%d months ago", math.floor(diff / 2629746))
-  elseif diff < 63113904 then
-    return "1 year ago"
-  else
-    return string.format("%d years ago", math.floor(diff / 31556952))
-  end
+  return "just now"
 end
 
 local function traverse_undotree(entries)
@@ -71,25 +57,19 @@ local function traverse_undotree(entries)
     local buffer_before_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false) or {}
     local buffer_before = table.concat(buffer_before_lines, "\n")
 
-    -- Create diff using vim.diff
     local diff = vim.diff(buffer_before, buffer_after, {
       result_type = "unified",
       ctxlen = 1,
     })
 
-    -- Extract additions and deletions
-    local additions = {}
-    local deletions = {}
-    local ordinal = ""
-    
+    local additions, deletions, ordinal = {}, {}, ""
     if diff then
       for line in (diff .. "\n"):gmatch("(.-)\n") do
-        if line:sub(1, 1) == "+" then
-          local content = line:sub(2, -1)
+        local prefix, content = line:sub(1, 1), line:sub(2, -1)
+        if prefix == "+" then
           table.insert(additions, content)
           ordinal = ordinal .. content
-        elseif line:sub(1, 1) == "-" then
-          local content = line:sub(2, -1)
+        elseif prefix == "-" then
           table.insert(deletions, content)
           ordinal = ordinal .. content
         end
@@ -153,30 +133,10 @@ local function build_undolist()
       local buffer_before_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false) or {}
       local buffer_before = table.concat(buffer_before_lines, "\n")
       
-      -- Create diff for original state
       local diff = vim.diff(buffer_before, buffer_after, {
         result_type = "unified",
         ctxlen = 1,
       })
-      
-      -- Extract additions and deletions
-      local additions = {}
-      local deletions = {}
-      local ordinal = ""
-      
-      if diff then
-        for line in (diff .. "\n"):gmatch("(.-)\n") do
-          if line:sub(1, 1) == "+" then
-            local content = line:sub(2, -1)
-            table.insert(additions, content)
-            ordinal = ordinal .. content
-          elseif line:sub(1, 1) == "-" then
-            local content = line:sub(2, -1)
-            table.insert(deletions, content)
-            ordinal = ordinal .. content
-          end
-        end
-      end
       
       -- Add original state entry
       table.insert(undolist, 1, {
@@ -194,32 +154,24 @@ local function build_undolist()
   local current_seq = ut.seq_cur
   local seq_last = ut.seq_last or current_seq
   
-  -- Get saved states by parsing the undo tree entries for save markers
+  -- Collect saved states
   local saved_states = {}
+  local most_recent_saved_seq = 0
+  
   local function collect_saved_states(entries)
     for _, entry in ipairs(entries) do
       if entry.save then
-        saved_states[entry.save] = entry.seq
+        saved_states[entry.seq] = true
+        if entry.save > (saved_states.max_save or 0) then
+          saved_states.max_save = entry.save
+          most_recent_saved_seq = entry.seq
+        end
       end
-      if entry.alt then
-        collect_saved_states(entry.alt)
-      end
+      if entry.alt then collect_saved_states(entry.alt) end
     end
   end
   
-  if ut.entries then
-    collect_saved_states(ut.entries)
-  end
-  
-  -- Find the most recent saved state (highest save number)
-  local max_save_num = 0
-  local most_recent_saved_seq = 0
-  for save_num, seq in pairs(saved_states) do
-    if save_num > max_save_num then
-      max_save_num = save_num
-      most_recent_saved_seq = seq
-    end
-  end
+  if ut.entries then collect_saved_states(ut.entries) end
   
   -- Sort by sequence number descending (undotree shows latest first)
   table.sort(undolist, function(a, b) return a.seq > b.seq end)
@@ -240,31 +192,15 @@ local function build_undolist()
     
     -- Add saved state markers
     local saved_marker = ""
-    for _, saved_seq in pairs(saved_states) do
-      if entry.seq == saved_seq then
-        saved_marker = " s"
-        break
-      end
-    end
-    if most_recent_saved_seq > 0 and entry.seq == most_recent_saved_seq then
-      saved_marker = " S"
+    if saved_states[entry.seq] then
+      saved_marker = entry.seq == most_recent_saved_seq and " S" or " s"
     end
     
-    -- Format display string
+    -- Format display string with diffstat
     local time_str = "(" .. format_relative_time(entry.time) .. ")"
-    entry.display = string.format("%s %s%s", seq_str, time_str, saved_marker)
-    
-    -- Add diffstat
-    local diffstat = ""
-    if #entry.additions > 0 then
-      diffstat = " +" .. #entry.additions
-    end
-    if #entry.deletions > 0 then
-      diffstat = diffstat .. " -" .. #entry.deletions
-    end
-    if diffstat ~= "" then
-      entry.display = entry.display .. diffstat
-    end
+    local diffstat = (#entry.additions > 0 and " +" .. #entry.additions or "") ..
+                     (#entry.deletions > 0 and " -" .. #entry.deletions or "")
+    entry.display = string.format("%s %s%s%s", seq_str, time_str, saved_marker, diffstat)
   end
   
   -- Restore original state
@@ -363,15 +299,11 @@ function M.pick()
       end,
     },
     preview = shell.stringify_cmd(function(items)
-      local item = items[1]
-      local entry = entry_map[item]
-      
-      if not entry or not entry.diff or entry.diff == "" then
-        return "echo 'No diff available'"
-      end
-      
-      return string.format("echo %s | bat --language=diff --color=always --style=changes --paging=never",
-        vim.fn.shellescape(entry.diff))
+      local entry = items[1] and entry_map[items[1]]
+      return entry and entry.diff ~= "" and
+        string.format("echo %s | bat --language=diff --color=always --style=changes --paging=never",
+          vim.fn.shellescape(entry.diff)) or
+        "echo 'No diff available'"
     end, {}, "{}"),
     fzf_opts = {
       ["--no-multi"] = "",
@@ -381,10 +313,7 @@ function M.pick()
     winopts = {
       height = 0.8,
       width = 0.9,
-      preview = {
-        layout = "horizontal",
-        horizontal = "right:50%",
-      },
+      preview = { horizontal = "right:50%" },
     },
   }
 
