@@ -470,6 +470,7 @@ end
 
 function M.pick()
   local fzf = require("fzf-lua")
+  local core = require("fzf-lua.core")
   local shell = require("fzf-lua.shell")
   
   if not vim.bo.modifiable then
@@ -485,19 +486,15 @@ function M.pick()
 
   -- Create entry mapping for lookups
   local entry_map = {}
-  local items = {}
   
   for _, entry in ipairs(undolist) do
-    -- Add both display and ordinal but use very light gray for ordinal
-    local ordinal = entry.ordinal or ""
-    local hidden_ordinal = ""
-    if ordinal ~= "" then
-      -- Use very light gray (color 8) which should be barely visible
-      hidden_ordinal = " \x1b[38;5;8m" .. ordinal .. "\x1b[0m"
-    end
-    local item = entry.display .. hidden_ordinal
     entry_map[entry.display] = entry
-    table.insert(items, item)
+  end
+  
+  -- Create live function that filters based on query
+  local function live_undo_filter(query)
+    local results = filter_undolist(query, undolist)
+    return results
   end
 
   local opts = {
@@ -506,9 +503,7 @@ function M.pick()
       ["default"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before ANSI escape sequence)
-          local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
-          local entry = entry_map[display]
+          local entry = entry_map[item]
           if entry and entry.seq then
             vim.cmd("undo " .. entry.seq)
             vim.notify("Restored to undo state " .. entry.seq, vim.log.levels.INFO)
@@ -518,9 +513,7 @@ function M.pick()
       ["ctrl-y"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before ANSI escape sequence)
-          local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
-          local entry = entry_map[display]
+          local entry = entry_map[item]
           if entry and entry.additions and #entry.additions > 0 then
             local register = '"'
             vim.fn.setreg(register, entry.additions, (#entry.additions > 1) and "V" or "v")
@@ -531,9 +524,7 @@ function M.pick()
       ["ctrl-d"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before ANSI escape sequence)
-          local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
-          local entry = entry_map[display]
+          local entry = entry_map[item]
           if entry and entry.deletions and #entry.deletions > 0 then
             local register = '"'
             vim.fn.setreg(register, entry.deletions, (#entry.deletions > 1) and "V" or "v")
@@ -545,9 +536,7 @@ function M.pick()
     -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
       local item = items[1]
-      -- Extract display part (before ANSI escape sequence)
-      local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
-      local entry = entry_map[display]
+      local entry = entry_map[item]
       
       if not entry or not entry.diff or entry.diff == "" then
         return "echo 'No diff available'"
@@ -561,7 +550,6 @@ function M.pick()
       ["--no-multi"] = "",
       ["--preview-window"] = "right:50%",
       ["--bind"] = "ctrl-y:accept,ctrl-d:accept",
-      ["--ansi"] = "",  -- Enable ANSI color processing
     },
     winopts = {
       height = 0.8,
@@ -573,7 +561,7 @@ function M.pick()
     },
   }
 
-  fzf.fzf_exec(items, opts)
+  core.fzf_live(live_undo_filter, opts)
 end
 
 return M
