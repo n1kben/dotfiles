@@ -493,8 +493,6 @@ function M.pick()
     return
   end
   
-  -- Debug: check undolist
-  vim.notify(string.format("DEBUG: built undolist with %d entries", #undolist))
 
   -- Create entry mapping for lookups
   local entry_map = {}
@@ -503,28 +501,16 @@ function M.pick()
     entry_map[entry.display] = entry
   end
   
-  -- Create initial content - all entries
-  local all_entries = {}
-  for _, entry in ipairs(undolist) do
-    table.insert(all_entries, entry.display)
-  end
-  
   -- Create live function that filters based on query - return results directly
   local function live_undo_filter(query_table)
     -- Extract query from table like live_grep does
     local query = query_table and query_table[1] or ""
-    
-    -- Debug: let's see what we're getting
-    vim.notify(string.format("DEBUG: query_table type: %s, query: '%s'", type(query_table), query))
-    
-    local results = filter_undolist(query, undolist)
-    vim.notify(string.format("DEBUG: returning %d results", #results))
-    return results
+    return filter_undolist(query, undolist)
   end
 
   local opts = {
     prompt = "Undo Tree> ",
-    query = "",  -- Start with empty query to show all results
+    exec_empty_query = true,  -- Show all entries on initial load
     actions = {
       ["default"] = function(selected)
         if #selected > 0 then
@@ -587,15 +573,8 @@ function M.pick()
     },
   }
 
-  -- Try providing initial content like live_grep does: command OR function
-  local initial_content = table.concat(all_entries, "\n")
-  if #all_entries > 0 then
-    -- Provide initial content as string, then switch to function for live updates
-    opts.fn_reload = live_undo_filter
-    core.fzf_live(initial_content, opts)
-  else
-    core.fzf_live(live_undo_filter, opts)
-  end
+  -- Use fzf_live with just the function like live_grep does
+  core.fzf_live(live_undo_filter, opts)
 end
 
 return M
