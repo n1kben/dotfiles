@@ -438,9 +438,18 @@ local function create_diff(current_lines, undo_lines, seq)
   end
 end
 
--- Custom filtering function for fzf reload mechanism
+-- Custom filtering function for fzf live mechanism
 local function filter_undolist(query, undolist)
-  if not query or query == "" then
+  -- Handle different query formats that fzf_live might send
+  if type(query) == "table" then
+    query = query[1] or ""
+  elseif not query then
+    query = ""
+  elseif type(query) ~= "string" then
+    query = tostring(query)
+  end
+  
+  if query == "" then
     -- Return all entries if no query
     local results = {}
     for _, entry in ipairs(undolist) do
