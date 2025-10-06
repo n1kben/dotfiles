@@ -42,8 +42,7 @@ local function format_relative_time(timestamp)
   end
 end
 
--- Traverse the undo tree and build diff entries just like telescope-undo
-local function traverse_undotree(entries, level)
+local function traverse_undotree(entries)
   local undolist = {}
   
   -- Process entries in reverse order (latest first)
@@ -78,7 +77,7 @@ local function traverse_undotree(entries, level)
       ctxlen = 1,
     })
 
-    -- Extract additions and deletions for display stats
+    -- Extract additions and deletions
     local additions = {}
     local deletions = {}
     local ordinal = ""
@@ -88,11 +87,11 @@ local function traverse_undotree(entries, level)
         if line:sub(1, 1) == "+" then
           local content = line:sub(2, -1)
           table.insert(additions, content)
-          ordinal = ordinal .. content  -- No spaces, exactly like telescope-undo
+          ordinal = ordinal .. content
         elseif line:sub(1, 1) == "-" then
           local content = line:sub(2, -1)
           table.insert(deletions, content)
-          ordinal = ordinal .. content  -- No spaces, exactly like telescope-undo
+          ordinal = ordinal .. content
         end
       end
     end
@@ -101,50 +100,19 @@ local function traverse_undotree(entries, level)
     if #additions == 0 and #deletions == 0 then
       goto continue
     end
-
-    -- Create display string with diffstat
-    local diffstat = ""
-    if #additions > 0 then
-      diffstat = "+" .. #additions
-    end
-    if #deletions > 0 then
-      if diffstat ~= "" then
-        diffstat = diffstat .. " "
-      end
-      diffstat = diffstat .. "-" .. #deletions
-    end
-
-    -- Create tree prefix for visual hierarchy
-    local prefix = ""
-    if level > 0 then
-      prefix = string.rep("┆ ", level - 1)
-      if i == #entries then
-        prefix = prefix .. "└╴"
-      else
-        prefix = prefix .. "├╴"
-      end
-    end
-
-    -- Format time
-    local time_str = entry.time and os.date("%H:%M:%S", entry.time) or ""
-    
-    -- Create display entry
-    local display = string.format("%sstate #%d %s %s", prefix, entry.seq, diffstat, time_str)
     
     table.insert(undolist, {
       seq = entry.seq,
-      display = display,
       diff = diff or "",
       additions = additions,
       deletions = deletions,
       ordinal = ordinal,
       time = entry.time or 0,
-      level = level,
     })
 
     -- Process alternate branches recursively
     if entry.alt then
-      local alt_undolist = traverse_undotree(entry.alt, level + 1)
+      local alt_undolist = traverse_undotree(entry.alt)
       for _, elem in pairs(alt_undolist) do
         table.insert(undolist, elem)
       end
@@ -167,7 +135,7 @@ local function build_undolist()
   end
   
   -- Build the undo list with diffs
-  local undolist = traverse_undotree(ut.entries, 0)
+  local undolist = traverse_undotree(ut.entries)
   
   -- Add the original state (sequence 0) if we have any undo history
   if #undolist > 0 then
@@ -201,37 +169,23 @@ local function build_undolist()
           if line:sub(1, 1) == "+" then
             local content = line:sub(2, -1)
             table.insert(additions, content)
-            ordinal = ordinal .. content  -- No spaces, exactly like telescope-undo
+            ordinal = ordinal .. content
           elseif line:sub(1, 1) == "-" then
             local content = line:sub(2, -1)
             table.insert(deletions, content)
-            ordinal = ordinal .. content  -- No spaces, exactly like telescope-undo
+            ordinal = ordinal .. content
           end
         end
       end
       
-      -- Create diffstat for original state
-      local diffstat = ""
-      if #additions > 0 then
-        diffstat = "+" .. #additions
-      end
-      if #deletions > 0 then
-        if diffstat ~= "" then
-          diffstat = diffstat .. " "
-        end
-        diffstat = diffstat .. "-" .. #deletions
-      end
-      
-      -- Add original state entry with no diff (it's the baseline)
+      -- Add original state entry
       table.insert(undolist, 1, {
         seq = 0,
-        display = "state #0 (original)",
-        diff = "",  -- No diff for original state
+        diff = "",
         additions = {},
         deletions = {},
         ordinal = "",
         time = 0,
-        level = 0,
       })
     end
   end
@@ -271,40 +225,36 @@ local function build_undolist()
   table.sort(undolist, function(a, b) return a.seq > b.seq end)
   
   for _, entry in ipairs(undolist) do
-    local seq_str = ""
+    local seq_str
     
-    -- Apply undotree's exact marking system:
+    -- Apply undotree's marking system
     if entry.seq == current_seq then
-      seq_str = string.format(">%d<", entry.seq)  -- Current state: >num<
+      seq_str = string.format(">%d<", entry.seq)
     elseif entry.seq > current_seq and entry.seq <= seq_last then
-      seq_str = string.format("{%d}", entry.seq)  -- Redo state: {num} (future)
+      seq_str = string.format("{%d}", entry.seq)
     elseif entry.seq == seq_last and entry.seq ~= current_seq then
-      seq_str = string.format("[%d]", entry.seq)  -- Latest state: [num] (only if different from current)
+      seq_str = string.format("[%d]", entry.seq)
     else
-      seq_str = tostring(entry.seq)  -- Regular state: num
+      seq_str = tostring(entry.seq)
     end
     
-    -- Add saved state markers following undotree's logic
+    -- Add saved state markers
     local saved_marker = ""
-    -- Check if this sequence is any saved state (lowercase s)
     for _, saved_seq in pairs(saved_states) do
       if entry.seq == saved_seq then
         saved_marker = " s"
         break
       end
     end
-    -- Check if this is the most recent saved state (uppercase S)
     if most_recent_saved_seq > 0 and entry.seq == most_recent_saved_seq then
       saved_marker = " S"
     end
     
-    -- Format like undotree: "seq (time)" 
+    -- Format display string
     local time_str = "(" .. format_relative_time(entry.time) .. ")"
-    
-    -- Remove tree prefix and recreate in undotree style
     entry.display = string.format("%s %s%s", seq_str, time_str, saved_marker)
     
-    -- Keep diffstat for additional info
+    -- Add diffstat
     local diffstat = ""
     if #entry.additions > 0 then
       diffstat = " +" .. #entry.additions
@@ -324,133 +274,8 @@ local function build_undolist()
   return undolist
 end
 
-local function get_buffer_state_at_seq(seq)
-  -- Save current state
-  local current_seq = vim.fn.undotree().seq_cur
-  
-  -- If it's the current sequence, just return current buffer
-  if seq == current_seq then
-    return vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  end
-  
-  -- Save current position and other state
-  local save_cursor = vim.api.nvim_win_get_cursor(0)
-  local save_view = vim.fn.winsaveview()
-  
-  -- Navigate to the requested sequence
-  local success, lines = pcall(function()
-    vim.cmd("silent undo " .. seq)
-    local result = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-    
-    -- Restore to current state
-    if current_seq ~= seq then
-      vim.cmd("silent undo " .. current_seq)
-    end
-    
-    return result
-  end)
-  
-  -- Restore cursor position and view
-  pcall(vim.api.nvim_win_set_cursor, 0, save_cursor)
-  pcall(vim.fn.winrestview, save_view)
-  
-  if success and lines then
-    return lines
-  else
-    -- Fallback: return current state
-    return vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  end
-end
-
-local function create_diff(current_lines, undo_lines, seq)
-  local current_seq = vim.fn.undotree().seq_cur
-  local undotree = vim.fn.undotree()
-  local saved_seq = undotree.save_cur or 0
-  
-  
-  -- For preview, show diff from saved state (or empty if no saved state)
-  local baseline_lines = {}
-  local baseline_name = "empty"
-  
-  if saved_seq > 0 then
-    baseline_lines = get_buffer_state_at_seq(saved_seq)
-    baseline_name = string.format("saved state (seq %d)", saved_seq)
-  end
-  
-  if #baseline_lines == 0 and #undo_lines == 0 then
-    return "Empty buffer"
-  elseif seq == saved_seq then
-    return "This is the saved state"
-  end
-  
-  -- Use bat for beautiful diff with syntax highlighting
-  -- Create temporary files for bat diff
-  local baseline_file = vim.fn.tempname()
-  local undo_file = vim.fn.tempname()
-  
-  -- Get current buffer filetype for syntax highlighting
-  local filetype = vim.bo.filetype
-  local extension = ""
-  if filetype == "lua" then
-    extension = ".lua"
-  elseif filetype == "javascript" then
-    extension = ".js"
-  elseif filetype == "typescript" then
-    extension = ".ts"
-  elseif filetype == "python" then
-    extension = ".py"
-  elseif filetype == "rust" then
-    extension = ".rs"
-  elseif filetype == "go" then
-    extension = ".go"
-  elseif filetype == "json" then
-    extension = ".json"
-  elseif filetype == "yaml" then
-    extension = ".yaml"
-  end
-  
-  baseline_file = baseline_file .. extension
-  undo_file = undo_file .. extension
-  
-  -- Write content to temp files
-  local baseline_content = table.concat(baseline_lines, "\n")
-  local undo_content = table.concat(undo_lines, "\n")
-  
-  vim.fn.writefile(vim.split(baseline_content, "\n"), baseline_file)
-  vim.fn.writefile(vim.split(undo_content, "\n"), undo_file)
-  
-  -- Use bat for diff with syntax highlighting
-  local cmd = string.format("bat --diff --diff-context=1 --color=always --style=changes --paging=never %s %s", 
-    vim.fn.shellescape(baseline_file), vim.fn.shellescape(undo_file))
-  
-  local result = vim.fn.system(cmd)
-  
-  -- Clean up temp files
-  vim.fn.delete(baseline_file)
-  vim.fn.delete(undo_file)
-  
-  if vim.v.shell_error == 0 and result ~= "" then
-    -- Add header and return bat output
-    local header = string.format("--- %s\n+++ seq %d\n\n", baseline_name, seq)
-    return header .. result
-  else
-    return "No changes from " .. baseline_name
-  end
-end
-
--- Custom filtering function for fzf live mechanism
 local function filter_undolist(query, undolist)
-  -- Handle different query formats that fzf_live might send
-  if type(query) == "table" then
-    query = query[1] or ""
-  elseif not query then
-    query = ""
-  elseif type(query) ~= "string" then
-    query = tostring(query)
-  end
-  
   if query == "" then
-    -- Return all entries if no query
     local results = {}
     for _, entry in ipairs(undolist) do
       table.insert(results, entry.display)
@@ -458,7 +283,6 @@ local function filter_undolist(query, undolist)
     return results
   end
   
-  -- Filter entries where query matches either display or ordinal content
   local results = {}
   local query_lower = query:lower()
   
@@ -466,7 +290,6 @@ local function filter_undolist(query, undolist)
     local display_lower = entry.display:lower()
     local ordinal_lower = (entry.ordinal or ""):lower()
     
-    -- Check if query matches display or ordinal content
     if display_lower:find(query_lower, 1, true) or ordinal_lower:find(query_lower, 1, true) then
       table.insert(results, entry.display)
     end
@@ -475,10 +298,7 @@ local function filter_undolist(query, undolist)
   return results
 end
 
--- Note: Reload mechanism was too complex, using ANSI approach instead
-
 function M.pick()
-  local fzf = require("fzf-lua")
   local core = require("fzf-lua.core")
   local shell = require("fzf-lua.shell")
   
@@ -493,7 +313,6 @@ function M.pick()
     return
   end
   
-
   -- Create entry mapping for lookups
   local entry_map = {}
   
@@ -501,16 +320,14 @@ function M.pick()
     entry_map[entry.display] = entry
   end
   
-  -- Create live function that filters based on query - return results directly
   local function live_undo_filter(query_table)
-    -- Extract query from table like live_grep does
     local query = query_table and query_table[1] or ""
     return filter_undolist(query, undolist)
   end
 
   local opts = {
     prompt = "Undo Tree> ",
-    exec_empty_query = true,  -- Show all entries on initial load
+    exec_empty_query = true,
     actions = {
       ["default"] = function(selected)
         if #selected > 0 then
@@ -545,7 +362,6 @@ function M.pick()
         end
       end,
     },
-    -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
       local item = items[1]
       local entry = entry_map[item]
@@ -554,7 +370,6 @@ function M.pick()
         return "echo 'No diff available'"
       end
       
-      -- Pipe diff content directly to bat, no temp files needed
       return string.format("echo %s | bat --language=diff --color=always --style=changes --paging=never",
         vim.fn.shellescape(entry.diff))
     end, {}, "{}"),
@@ -573,7 +388,6 @@ function M.pick()
     },
   }
 
-  -- Use fzf_live with just the function like live_grep does
   core.fzf_live(live_undo_filter, opts)
 end
 
