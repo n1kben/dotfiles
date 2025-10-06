@@ -1,5 +1,6 @@
 return {
   "coder/claudecode.nvim",
+  enabled = false,
   config = true,
   lazy = false,
   keys = {

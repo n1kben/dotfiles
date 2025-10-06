@@ -202,9 +202,12 @@ function M.setup(opts)
   -- Commands
   vim.api.nvim_create_user_command("Alternate", M.select_alternate,
     { desc = "Find alternate files" })
-
   vim.api.nvim_create_user_command("AlternateSwitch", M.switch_alternate,
     { desc = "Switch to first alternate file" })
+
+  -- Keymaps
+  vim.keymap.set("n", "<leader>a", ":AlternateSwitch<CR>", { desc = "Alternate: Switch to first alternate file" })
+  vim.keymap.set("n", "<leader>A", ":Alternate<CR>", { desc = "Alternate: Find alternate files" })
 end
 
 return M
