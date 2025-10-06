@@ -526,6 +526,14 @@ function M.setup(opts)
 
   -- Commands
   vim.api.nvim_create_user_command("GitStatus", M.open_git_status, {})
+  
+  -- Auto-refresh on vim-fugitive operations
+  vim.api.nvim_create_autocmd("User", {
+    pattern = "FugitiveChanged",
+    callback = function()
+      M.refresh_git_status()
+    end,
+  })
 end
 
 return M
