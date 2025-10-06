@@ -458,11 +458,8 @@ function M.pick()
   local items = {}
   
   for _, entry in ipairs(undolist) do
-    -- Use a less visible separator and let fzf search everything
-    -- The ordinal content will be there but more visually separated
-    local ordinal = entry.ordinal or ""
-    local separator = ordinal ~= "" and "   " or ""  -- 3 spaces as separator
-    local item = entry.display .. separator .. ordinal
+    -- Use tab delimiter - field 1 = display, field 2 = ordinal
+    local item = entry.display .. "\t" .. (entry.ordinal or "")
     entry_map[entry.display] = entry
     table.insert(items, item)
   end
@@ -473,47 +470,38 @@ function M.pick()
       ["default"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Find the matching display by checking all keys
-          for display, entry in pairs(entry_map) do
-            if item:find(display, 1, true) == 1 then
-              if entry and entry.seq then
-                vim.cmd("undo " .. entry.seq)
-                vim.notify("Restored to undo state " .. entry.seq, vim.log.levels.INFO)
-              end
-              break
-            end
+          -- Extract display part (before tab)
+          local display = item:match("^([^\t]*)")
+          local entry = entry_map[display]
+          if entry and entry.seq then
+            vim.cmd("undo " .. entry.seq)
+            vim.notify("Restored to undo state " .. entry.seq, vim.log.levels.INFO)
           end
         end
       end,
       ["ctrl-y"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Find the matching display by checking all keys
-          for display, entry in pairs(entry_map) do
-            if item:find(display, 1, true) == 1 then
-              if entry and entry.additions and #entry.additions > 0 then
-                local register = '"'
-                vim.fn.setreg(register, entry.additions, (#entry.additions > 1) and "V" or "v")
-                vim.notify("Yanked additions to register " .. register, vim.log.levels.INFO)
-              end
-              break
-            end
+          -- Extract display part (before tab)
+          local display = item:match("^([^\t]*)")
+          local entry = entry_map[display]
+          if entry and entry.additions and #entry.additions > 0 then
+            local register = '"'
+            vim.fn.setreg(register, entry.additions, (#entry.additions > 1) and "V" or "v")
+            vim.notify("Yanked additions to register " .. register, vim.log.levels.INFO)
           end
         end
       end,
       ["ctrl-d"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Find the matching display by checking all keys
-          for display, entry in pairs(entry_map) do
-            if item:find(display, 1, true) == 1 then
-              if entry and entry.deletions and #entry.deletions > 0 then
-                local register = '"'
-                vim.fn.setreg(register, entry.deletions, (#entry.deletions > 1) and "V" or "v")
-                vim.notify("Yanked deletions to register " .. register, vim.log.levels.INFO)
-              end
-              break
-            end
+          -- Extract display part (before tab)
+          local display = item:match("^([^\t]*)")
+          local entry = entry_map[display]
+          if entry and entry.deletions and #entry.deletions > 0 then
+            local register = '"'
+            vim.fn.setreg(register, entry.deletions, (#entry.deletions > 1) and "V" or "v")
+            vim.notify("Yanked deletions to register " .. register, vim.log.levels.INFO)
           end
         end
       end,
@@ -521,14 +509,9 @@ function M.pick()
     -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
       local item = items[1]
-      -- Find the matching display by checking all keys
-      local entry = nil
-      for display, e in pairs(entry_map) do
-        if item:find(display, 1, true) == 1 then
-          entry = e
-          break
-        end
-      end
+      -- Extract display part (before tab)
+      local display = item:match("^([^\t]*)")
+      local entry = entry_map[display]
       
       if not entry or not entry.diff or entry.diff == "" then
         return "echo 'No diff available'"
@@ -542,8 +525,9 @@ function M.pick()
       ["--no-multi"] = "",
       ["--preview-window"] = "right:50%",
       ["--bind"] = "ctrl-y:accept,ctrl-d:accept",
-      -- Let's see if removing --with-nth allows search to work
-      -- The ordinal content will be visible but searchable
+      ["--delimiter"] = "\t",
+      ["--nth"] = "1,2",        -- Search in both field 1 and field 2
+      ["--with-nth"] = "1",     -- Display only field 1
     },
     winopts = {
       height = 0.8,
