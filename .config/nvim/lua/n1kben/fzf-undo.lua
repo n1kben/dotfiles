@@ -458,8 +458,14 @@ function M.pick()
   local items = {}
   
   for _, entry in ipairs(undolist) do
-    -- Use tab delimiter - field 1 = display, field 2 = ordinal
-    local item = entry.display .. "\t" .. (entry.ordinal or "")
+    -- Use ANSI escape codes to make ordinal content invisible but searchable
+    local ordinal = entry.ordinal or ""
+    local hidden_ordinal = ""
+    if ordinal ~= "" then
+      -- Make text invisible: set foreground color to black and hide cursor
+      hidden_ordinal = " \x1b[30m" .. ordinal .. "\x1b[0m"
+    end
+    local item = entry.display .. hidden_ordinal
     entry_map[entry.display] = entry
     table.insert(items, item)
   end
@@ -470,8 +476,8 @@ function M.pick()
       ["default"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before tab)
-          local display = item:match("^([^\t]*)")
+          -- Extract display part (before ANSI escape sequence)
+          local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
           local entry = entry_map[display]
           if entry and entry.seq then
             vim.cmd("undo " .. entry.seq)
@@ -482,8 +488,8 @@ function M.pick()
       ["ctrl-y"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before tab)
-          local display = item:match("^([^\t]*)")
+          -- Extract display part (before ANSI escape sequence)
+          local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
           local entry = entry_map[display]
           if entry and entry.additions and #entry.additions > 0 then
             local register = '"'
@@ -495,8 +501,8 @@ function M.pick()
       ["ctrl-d"] = function(selected)
         if #selected > 0 then
           local item = selected[1]
-          -- Extract display part (before tab)
-          local display = item:match("^([^\t]*)")
+          -- Extract display part (before ANSI escape sequence)
+          local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
           local entry = entry_map[display]
           if entry and entry.deletions and #entry.deletions > 0 then
             local register = '"'
@@ -509,8 +515,8 @@ function M.pick()
     -- Use fzf-lua's shell.stringify_cmd pattern like git commands  
     preview = shell.stringify_cmd(function(items)
       local item = items[1]
-      -- Extract display part (before tab)
-      local display = item:match("^([^\t]*)")
+      -- Extract display part (before ANSI escape sequence)
+      local display = item:match("^(.-)%s*\x1b") or item:gsub("%s+$", "")
       local entry = entry_map[display]
       
       if not entry or not entry.diff or entry.diff == "" then
@@ -525,9 +531,8 @@ function M.pick()
       ["--no-multi"] = "",
       ["--preview-window"] = "right:50%",
       ["--bind"] = "ctrl-y:accept,ctrl-d:accept",
-      ["--delimiter"] = "\t",
-      ["--nth"] = "1,2",        -- Search in both field 1 and field 2
-      ["--with-nth"] = "1",     -- Display only field 1
+      -- No field restrictions - let fzf search through everything including hidden ANSI text
+      ["--ansi"] = "",  -- Enable ANSI color processing
     },
     winopts = {
       height = 0.8,
