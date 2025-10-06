@@ -500,14 +500,22 @@ function M.pick()
     entry_map[entry.display] = entry
   end
   
-  -- Create live function that filters based on query
-  local function live_undo_filter(query)
-    local results = filter_undolist(query, undolist)
-    return results
+  -- Create initial content - all entries
+  local all_entries = {}
+  for _, entry in ipairs(undolist) do
+    table.insert(all_entries, entry.display)
+  end
+  
+  -- Create live function that filters based on query - return results directly
+  local function live_undo_filter(query_table)
+    -- Extract query from table like live_grep does
+    local query = query_table and query_table[1] or ""
+    return filter_undolist(query, undolist)
   end
 
   local opts = {
     prompt = "Undo Tree> ",
+    query = "",  -- Start with empty query to show all results
     actions = {
       ["default"] = function(selected)
         if #selected > 0 then
