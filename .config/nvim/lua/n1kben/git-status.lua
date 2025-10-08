@@ -1,8 +1,6 @@
 -- lua/git-status.lua
 local M = {}
 
--- Default configuration
-M.config = {}
 
 -- Setup highlight groups for git status
 local function setup_highlights()
@@ -380,8 +378,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
 
     if file then
       -- Determine which section we're in by checking lines above current position
-      local current_line_num = vim.api.nvim_win_get_cursor(0)[1]
-      local buffer_lines = vim.api.nvim_buf_get_lines(0, 0, current_line_num, false)
+      local buffer_lines = vim.api.nvim_buf_get_lines(0, 0, line_num, false)
       local in_staged_section = false
 
       -- Find the most recent section header above current line
@@ -580,7 +577,6 @@ end
 
 -- Setup
 function M.setup(opts)
-  M.config = vim.tbl_deep_extend("force", M.config, opts or {})
 
   -- Commands
   vim.api.nvim_create_user_command("GitStatus", M.open_git_status, {})
