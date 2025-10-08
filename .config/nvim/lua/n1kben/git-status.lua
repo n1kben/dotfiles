@@ -179,7 +179,7 @@ local function format_git_status_content(git_data)
 
   -- Add help text at top
   table.insert(lines,
-    "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, gk to commit, <BS> to checkout/delete")
+    "Press <CR> for diff, gd to open file, <Tab> to stage/unstage, <BS> to checkout/delete")
   highlight_map[line_num] = "GitStatusInstructions"
   line_num = line_num + 1
 
@@ -374,29 +374,6 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     end
   end, { buffer = bufnr, desc = "Open file under cursor" })
 
-  vim.keymap.set('n', 'gk', function()
-    -- Use callback version of vim.ui.input
-    vim.ui.input({ prompt = "Commit message: " }, function(commit_msg)
-      if commit_msg and commit_msg ~= "" then
-        -- Run git commit with the message
-        local result = run_git_command("git commit -m " .. vim.fn.shellescape(commit_msg))
-        if vim.v.shell_error == 0 then
-          vim.notify("Committed successfully", vim.log.levels.INFO)
-          -- Refresh the git status buffer after a short delay
-          vim.defer_fn(function()
-            M.refresh_git_status()
-          end, 100)
-        else
-          vim.notify("Commit failed: " .. result, vim.log.levels.ERROR)
-        end
-      end
-    end)
-  end, {
-    buffer = bufnr,
-    desc = "Commit with message",
-    noremap = true, -- Don't allow remapping
-    silent = true   -- Don't show in command line
-  })
 
   vim.keymap.set('n', '<Tab>', function()
     local line_num = vim.api.nvim_win_get_cursor(0)[1]
