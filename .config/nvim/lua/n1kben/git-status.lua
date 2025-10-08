@@ -253,31 +253,30 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
       end
 
       if is_untracked then
-        -- For untracked files, show file content instead of diff
-        local absolute_file = get_absolute_path(file)
-        local file_content = vim.fn.readfile(absolute_file)
-        if vim.v.shell_error ~= 0 then
-          vim.notify("Failed to read file " .. file, vim.log.levels.ERROR)
+        -- For untracked files, show diff with everything added
+        local diff_cmd = "git diff --no-index /dev/null " .. vim.fn.shellescape(file)
+        
+        -- Get diff output
+        local diff_output = run_git_command(diff_cmd)
+        -- git diff --no-index exits with 1 when files differ, which is expected
+        if vim.v.shell_error ~= 1 and vim.v.shell_error ~= 0 then
+          vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
           return
         end
 
-        -- Create content buffer
-        local content_bufnr = vim.api.nvim_create_buf(false, true)
-        vim.api.nvim_buf_set_option(content_bufnr, 'buftype', 'nofile')
-        vim.api.nvim_buf_set_name(content_bufnr, 'Content: ' .. file)
+        -- Create diff buffer
+        local diff_bufnr = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_option(diff_bufnr, 'buftype', 'nofile')
+        vim.api.nvim_buf_set_option(diff_bufnr, 'filetype', 'diff')
+        vim.api.nvim_buf_set_name(diff_bufnr, 'Diff: ' .. file)
 
-        -- Set filetype based on file extension for syntax highlighting
-        local filetype = vim.fn.fnamemodify(file, ":e")
-        if filetype ~= "" then
-          vim.api.nvim_buf_set_option(content_bufnr, 'filetype', filetype)
-        end
+        -- Set diff content
+        local lines = vim.split(diff_output, '\n')
+        vim.api.nvim_buf_set_lines(diff_bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', false)
 
-        -- Set file content
-        vim.api.nvim_buf_set_lines(content_bufnr, 0, -1, false, file_content)
-        vim.api.nvim_buf_set_option(content_bufnr, 'modifiable', false)
-
-        -- Open content buffer
-        vim.api.nvim_set_current_buf(content_bufnr)
+        -- Open diff buffer
+        vim.api.nvim_set_current_buf(diff_bufnr)
       else
         -- For tracked files, show diff as before
         local is_staged = false
