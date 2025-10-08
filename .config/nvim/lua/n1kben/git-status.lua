@@ -381,18 +381,11 @@ end
 
 -- Create and configure git status buffer
 local function create_git_status_buffer()
-  -- Create a new buffer (listed, not scratch)
-  local bufnr = vim.api.nvim_create_buf(false, false)
-
-  -- Set buffer options
-  vim.api.nvim_buf_set_option(bufnr, 'buftype', 'nofile')
-  vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)
-  vim.api.nvim_buf_set_option(bufnr, 'filetype', 'gitstatus')
-  vim.api.nvim_buf_set_option(bufnr, 'buflisted', true)
-
-  -- Set buffer name with unique suffix to avoid conflicts
   local name = prelude.create_unique_buffer_name('GitStatus')
-  vim.api.nvim_buf_set_name(bufnr, name)
+  local bufnr = prelude.create_view_buffer(name, 'gitstatus')
+  
+  -- Make it listed so it shows in buffer list
+  vim.api.nvim_buf_set_option(bufnr, 'buflisted', true)
 
   return bufnr
 end
