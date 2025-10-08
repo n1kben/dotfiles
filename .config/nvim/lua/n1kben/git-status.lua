@@ -1,5 +1,6 @@
 -- lua/git-status.lua
 local M = {}
+local prelude = require('n1kben.prelude')
 
 
 -- Setup highlight groups for git status
@@ -27,27 +28,19 @@ local SECTIONS = {
   { key = "untracked", name = "Untracked files:" },
 }
 
--- Get git repository root directory
-local function get_git_root()
-  local root_output = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null")
-  if vim.v.shell_error == 0 then
-    return root_output:gsub("%s+$", "") -- trim trailing whitespace
-  end
-  return nil
-end
 
 -- Convert relative file path to absolute path from git root
 local function get_absolute_path(relative_path)
-  local git_root = get_git_root()
+  local git_root = prelude.get_git_root()
   if git_root then
-    return git_root .. "/" .. relative_path
+    return prelude.join_path(git_root, relative_path)
   end
   return relative_path -- fallback to relative path if git root not found
 end
 
 -- Convert git root relative path to current working directory relative path
 local function get_cwd_relative_path(git_relative_path)
-  local git_root = get_git_root()
+  local git_root = prelude.get_git_root()
   local cwd = vim.fn.getcwd()
   
   if not git_root then
@@ -55,7 +48,7 @@ local function get_cwd_relative_path(git_relative_path)
   end
   
   -- Get absolute path of the file
-  local absolute_path = git_root .. "/" .. git_relative_path
+  local absolute_path = prelude.join_path(git_root, git_relative_path)
   
   -- Convert to relative path from current working directory
   -- fnamemodify with ":." gives relative path from cwd, but might return absolute if outside
@@ -99,17 +92,6 @@ local function get_cwd_relative_path(git_relative_path)
   return relative_path
 end
 
--- Run git command from git root directory
-local function run_git_command(cmd)
-  local git_root = get_git_root()
-  if git_root then
-    -- Use -C flag to run git command from specific directory
-    local git_cmd = "git -C " .. vim.fn.shellescape(git_root) .. " " .. cmd:gsub("^git ", "")
-    return vim.fn.system(git_cmd)
-  else
-    return vim.fn.system(cmd)
-  end
-end
 
 -- Parse git command output and add files to result table
 local function parse_git_output(output, section_key, result)
@@ -135,15 +117,15 @@ local function parse_git_status()
   local result = { staged = {}, modified = {}, untracked = {} }
 
   -- Get staged files
-  local staged_output = run_git_command("git diff --name-status --cached")
+  local staged_output = prelude.run_git_command("git diff --name-status --cached")
   parse_git_output(staged_output, "staged", result)
 
   -- Get modified files  
-  local modified_output = run_git_command("git diff --name-status")
+  local modified_output = prelude.run_git_command("git diff --name-status")
   parse_git_output(modified_output, "modified", result)
 
   -- Get untracked files
-  local untracked_output = run_git_command("git ls-files --others --exclude-standard")
+  local untracked_output = prelude.run_git_command("git ls-files --others --exclude-standard")
   parse_git_output(untracked_output, "untracked", result)
 
   return result
@@ -157,7 +139,7 @@ local function format_git_status_content(git_data)
   local line_num = 1
 
   -- Get current branch
-  local branch_output = run_git_command("git branch --show-current 2>/dev/null")
+  local branch_output = prelude.run_git_command("git branch --show-current 2>/dev/null")
   local branch = branch_output:gsub("%s+", "") -- trim whitespace
   if branch == "" then
     branch = "HEAD"
@@ -220,27 +202,16 @@ local function format_git_status_content(git_data)
   return lines, file_map, highlight_map
 end
 
--- Set common buffer options
-local function set_buffer_options(bufnr, options)
-  for option, value in pairs(options) do
-    vim.api.nvim_buf_set_option(bufnr, option, value)
-  end
-end
 
 -- Create and show a diff buffer
 local function create_diff_buffer(file, diff_output)
-  local diff_bufnr = vim.api.nvim_create_buf(false, true)
-  set_buffer_options(diff_bufnr, {
-    buftype = 'nofile',
-    filetype = 'diff'
-  })
-  vim.api.nvim_buf_set_name(diff_bufnr, 'Diff: ' .. file)
-
+  local diff_bufnr = prelude.create_view_buffer('Diff: ' .. file, 'diff')
+  
+  -- Temporarily make it modifiable to set content
+  vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', true)
   local lines = vim.split(diff_output, '\n')
   vim.api.nvim_buf_set_lines(diff_bufnr, 0, -1, false, lines)
-  
-  -- Make it non-modifiable after setting content
-  set_buffer_options(diff_bufnr, { modifiable = false })
+  vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', false)
 
   vim.api.nvim_set_current_buf(diff_bufnr)
 end
@@ -287,7 +258,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         local diff_cmd = "git diff --no-index /dev/null " .. vim.fn.shellescape(file)
         
         -- Get diff output
-        local diff_output = run_git_command(diff_cmd)
+        local diff_output = prelude.run_git_command(diff_cmd)
         -- git diff --no-index exits with 1 when files differ, which is expected
         if vim.v.shell_error ~= 1 and vim.v.shell_error ~= 0 then
           vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
@@ -315,7 +286,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         end
 
         -- Get diff output
-        local diff_output = run_git_command(diff_cmd)
+        local diff_output = prelude.run_git_command(diff_cmd)
         if vim.v.shell_error ~= 0 and diff_output == "" then
           vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
           return
@@ -339,7 +310,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         vim.cmd('edit ' .. vim.fn.fnameescape(absolute_file))
       else
         -- For deleted files, get content from HEAD and create editable buffer
-        local file_content_output = run_git_command("git show HEAD:" .. vim.fn.shellescape(file))
+        local file_content_output = prelude.run_git_command("git show HEAD:" .. vim.fn.shellescape(file))
         if vim.v.shell_error ~= 0 then
           vim.notify("Failed to get content for deleted file " .. file, vim.log.levels.ERROR)
           return
@@ -363,7 +334,9 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         if filetype ~= "" then
           options.filetype = filetype
         end
-        set_buffer_options(new_bufnr, options)
+        for option, value in pairs(options) do
+          vim.api.nvim_buf_set_option(new_bufnr, option, value)
+        end
 
         -- Open the buffer
         vim.api.nvim_set_current_buf(new_bufnr)
@@ -397,13 +370,13 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
       local cmd_result
       if in_staged_section then
         -- We're in staged section, so unstage
-        local has_commits = run_git_command("git rev-parse --verify HEAD 2>/dev/null")
+        local has_commits = prelude.run_git_command("git rev-parse --verify HEAD 2>/dev/null")
         if vim.v.shell_error == 0 then
           -- Has commits, can use reset HEAD
-          cmd_result = run_git_command("git reset HEAD " .. vim.fn.shellescape(file))
+          cmd_result = prelude.run_git_command("git reset HEAD " .. vim.fn.shellescape(file))
         else
           -- No commits yet, use rm --cached
-          cmd_result = run_git_command("git rm --cached " .. vim.fn.shellescape(file))
+          cmd_result = prelude.run_git_command("git rm --cached " .. vim.fn.shellescape(file))
         end
       else
         -- We're in modified/untracked section, so stage
@@ -411,10 +384,10 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         local absolute_file = get_absolute_path(file)
         local file_exists = vim.fn.filereadable(absolute_file) == 1
         if file_exists then
-          cmd_result = run_git_command("git add " .. vim.fn.shellescape(file))
+          cmd_result = prelude.run_git_command("git add " .. vim.fn.shellescape(file))
         else
           -- File is deleted, use git rm to stage the deletion
-          cmd_result = run_git_command("git rm " .. vim.fn.shellescape(file))
+          cmd_result = prelude.run_git_command("git rm " .. vim.fn.shellescape(file))
         end
       end
 
@@ -452,7 +425,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         -- For tracked files, checkout as before
         local confirm = vim.fn.confirm("Checkout " .. file .. "? This will discard all changes.", "&Y\n&n", 1)
         if confirm == 1 then
-          local cmd_result = run_git_command("git checkout -- " .. vim.fn.shellescape(file))
+          local cmd_result = prelude.run_git_command("git checkout -- " .. vim.fn.shellescape(file))
 
           if vim.v.shell_error ~= 0 then
             vim.notify("Git checkout failed: " .. cmd_result, vim.log.levels.ERROR)
@@ -473,20 +446,13 @@ local function create_git_status_buffer()
   local bufnr = vim.api.nvim_create_buf(false, false)
 
   -- Set buffer options
-  set_buffer_options(bufnr, {
-    buftype = 'nofile',
-    swapfile = false,
-    filetype = 'gitstatus',
-    buflisted = true  -- Explicitly make it listed (buftype=nofile makes it unlisted by default)
-  })
+  vim.api.nvim_buf_set_option(bufnr, 'buftype', 'nofile')
+  vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)
+  vim.api.nvim_buf_set_option(bufnr, 'filetype', 'gitstatus')
+  vim.api.nvim_buf_set_option(bufnr, 'buflisted', true)
 
   -- Set buffer name with unique suffix to avoid conflicts
-  local name = 'GitStatus'
-  local counter = 1
-  while vim.fn.bufexists(name) == 1 do
-    name = 'GitStatus-' .. counter
-    counter = counter + 1
-  end
+  local name = prelude.create_unique_buffer_name('GitStatus')
   vim.api.nvim_buf_set_name(bufnr, name)
 
   return bufnr
@@ -502,9 +468,9 @@ function M.refresh_git_status()
   local content, file_map, highlight_map = format_git_status_content(git_data)
 
   -- Update buffer content
-  set_buffer_options(M._current_buffer, { modifiable = true })
+  vim.api.nvim_buf_set_option(M._current_buffer, 'modifiable', true)
   vim.api.nvim_buf_set_lines(M._current_buffer, 0, -1, false, content)
-  set_buffer_options(M._current_buffer, { modifiable = false })
+  vim.api.nvim_buf_set_option(M._current_buffer, 'modifiable', false)
 
   -- Apply highlighting
   apply_highlighting(M._current_buffer, highlight_map)
@@ -527,7 +493,7 @@ function M.open_git_status()
   end
 
   -- Check if we're in a git repository
-  if not get_git_root() then
+  if not prelude.get_git_root() then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
@@ -544,7 +510,7 @@ function M.open_git_status()
 
   -- Set content
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
-  set_buffer_options(bufnr, { modifiable = false })
+  vim.api.nvim_buf_set_option(bufnr, 'modifiable', false)
 
   -- Apply highlighting
   apply_highlighting(bufnr, highlight_map)
