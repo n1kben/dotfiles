@@ -29,38 +29,125 @@ local SECTIONS = {
   { key = "untracked", name = "Untracked files:" },
 }
 
+-- Get git repository root directory
+local function get_git_root()
+  local root_output = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null")
+  if vim.v.shell_error == 0 then
+    return root_output:gsub("%s+$", "") -- trim trailing whitespace
+  end
+  return nil
+end
+
+-- Convert relative file path to absolute path from git root
+local function get_absolute_path(relative_path)
+  local git_root = get_git_root()
+  if git_root then
+    return git_root .. "/" .. relative_path
+  end
+  return relative_path -- fallback to relative path if git root not found
+end
+
+-- Convert git root relative path to current working directory relative path
+local function get_cwd_relative_path(git_relative_path)
+  local git_root = get_git_root()
+  local cwd = vim.fn.getcwd()
+  
+  if not git_root then
+    return git_relative_path
+  end
+  
+  -- Get absolute path of the file
+  local absolute_path = git_root .. "/" .. git_relative_path
+  
+  -- Convert to relative path from current working directory
+  -- fnamemodify with ":." gives relative path from cwd, but might return absolute if outside
+  local relative_path = vim.fn.fnamemodify(absolute_path, ":.")
+  
+  -- If it's still absolute (starts with /), calculate manual relative path
+  if relative_path:match("^/") then
+    -- Calculate relative path manually
+    local cwd_parts = vim.split(cwd, "/")
+    local file_parts = vim.split(absolute_path, "/")
+    
+    -- Find common prefix
+    local common_len = 0
+    for i = 1, math.min(#cwd_parts, #file_parts) do
+      if cwd_parts[i] == file_parts[i] then
+        common_len = i
+      else
+        break
+      end
+    end
+    
+    -- Build relative path
+    local up_dirs = #cwd_parts - common_len
+    local down_parts = {}
+    for i = common_len + 1, #file_parts do
+      table.insert(down_parts, file_parts[i])
+    end
+    
+    if up_dirs > 0 then
+      local up_path = string.rep("../", up_dirs):sub(1, -2) -- remove trailing /
+      if #down_parts > 0 then
+        relative_path = up_path .. "/" .. table.concat(down_parts, "/")
+      else
+        relative_path = up_path
+      end
+    else
+      relative_path = table.concat(down_parts, "/")
+    end
+  end
+  
+  return relative_path
+end
+
+-- Run git command from git root directory
+local function run_git_command(cmd)
+  local git_root = get_git_root()
+  if git_root then
+    -- Use -C flag to run git command from specific directory
+    local git_cmd = "git -C " .. vim.fn.shellescape(git_root) .. " " .. cmd:gsub("^git ", "")
+    return vim.fn.system(git_cmd)
+  else
+    return vim.fn.system(cmd)
+  end
+end
+
 -- Synchronous version for backwards compatibility
 local function parse_git_status()
   local result = { staged = {}, modified = {}, untracked = {} }
 
   -- Get staged files
-  local staged_output = vim.fn.system("git diff --name-status --cached")
+  local staged_output = run_git_command("git diff --name-status --cached")
   if vim.v.shell_error == 0 and staged_output ~= "" then
     for line in staged_output:gmatch("[^\r\n]+") do
       local status, file = line:match("^(%S+)%s+(.+)$")
       if status and file then
-        table.insert(result.staged, { status = status, file = file })
+        local display_file = get_cwd_relative_path(file)
+        table.insert(result.staged, { status = status, file = file, display_file = display_file })
       end
     end
   end
 
   -- Get modified files
-  local modified_output = vim.fn.system("git diff --name-status")
+  local modified_output = run_git_command("git diff --name-status")
   if vim.v.shell_error == 0 and modified_output ~= "" then
     for line in modified_output:gmatch("[^\r\n]+") do
       local status, file = line:match("^(%S+)%s+(.+)$")
       if status and file then
-        table.insert(result.modified, { status = status, file = file })
+        local display_file = get_cwd_relative_path(file)
+        table.insert(result.modified, { status = status, file = file, display_file = display_file })
       end
     end
   end
 
   -- Get untracked files
-  local untracked_output = vim.fn.system("git ls-files --others --exclude-standard")
+  local untracked_output = run_git_command("git ls-files --others --exclude-standard")
   if vim.v.shell_error == 0 and untracked_output ~= "" then
     for file in untracked_output:gmatch("[^\r\n]+") do
       if file ~= "" then
-        table.insert(result.untracked, { status = "??", file = file })
+        local display_file = get_cwd_relative_path(file)
+        table.insert(result.untracked, { status = "??", file = file, display_file = display_file })
       end
     end
   end
@@ -76,7 +163,7 @@ local function format_git_status_content(git_data)
   local line_num = 1
 
   -- Get current branch
-  local branch_output = vim.fn.system("git branch --show-current 2>/dev/null")
+  local branch_output = run_git_command("git branch --show-current 2>/dev/null")
   local branch = branch_output:gsub("%s+", "") -- trim whitespace
   if branch == "" then
     branch = "HEAD"
@@ -109,7 +196,7 @@ local function format_git_status_content(git_data)
 
     if #files > 0 then
       for _, item in ipairs(files) do
-        local display_line = string.format("  %s %s", item.status, item.file)
+        local display_line = string.format("  %s %s", item.status, item.display_file or item.file)
         table.insert(lines, display_line)
         file_map[line_num] = item.file
 
@@ -167,7 +254,8 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
 
       if is_untracked then
         -- For untracked files, show file content instead of diff
-        local file_content = vim.fn.readfile(file)
+        local absolute_file = get_absolute_path(file)
+        local file_content = vim.fn.readfile(absolute_file)
         if vim.v.shell_error ~= 0 then
           vim.notify("Failed to read file " .. file, vim.log.levels.ERROR)
           return
@@ -200,13 +288,14 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
           end
         end
 
+        local absolute_file = get_absolute_path(file)
         local diff_cmd
         if is_staged then
           -- Show diff of staged changes (what will be committed)
           diff_cmd = "git diff --cached " .. vim.fn.shellescape(file)
         else
           -- Check if file exists to determine the right diff command
-          local file_exists = vim.fn.filereadable(file) == 1
+          local file_exists = vim.fn.filereadable(absolute_file) == 1
           if file_exists then
             -- Show diff of unstaged changes for existing files
             diff_cmd = "git diff " .. vim.fn.shellescape(file)
@@ -217,7 +306,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         end
 
         -- Get diff output
-        local diff_output = vim.fn.system(diff_cmd)
+        local diff_output = run_git_command(diff_cmd)
         if vim.v.shell_error ~= 0 and diff_output == "" then
           vim.notify("Failed to get diff for " .. file, vim.log.levels.ERROR)
           return
@@ -246,13 +335,14 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
-      local file_exists = vim.fn.filereadable(file) == 1
+      local absolute_file = get_absolute_path(file)
+      local file_exists = vim.fn.filereadable(absolute_file) == 1
       if file_exists then
         -- Open existing file normally
-        vim.cmd('edit ' .. vim.fn.fnameescape(file))
+        vim.cmd('edit ' .. vim.fn.fnameescape(absolute_file))
       else
         -- For deleted files, get content from HEAD and create editable buffer
-        local file_content_output = vim.fn.system("git show HEAD:" .. vim.fn.shellescape(file))
+        local file_content_output = run_git_command("git show HEAD:" .. vim.fn.shellescape(file))
         if vim.v.shell_error ~= 0 then
           vim.notify("Failed to get content for deleted file " .. file, vim.log.levels.ERROR)
           return
@@ -260,8 +350,8 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
 
         -- Create new buffer for the deleted file
         local new_bufnr = vim.api.nvim_create_buf(false, false)
-        vim.api.nvim_buf_set_name(new_bufnr, file)
-        
+        vim.api.nvim_buf_set_name(new_bufnr, absolute_file)
+
         -- Set file content from HEAD
         local lines = vim.split(file_content_output, '\n')
         -- Remove empty last line if present (common with git show)
@@ -269,16 +359,16 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
           table.remove(lines)
         end
         vim.api.nvim_buf_set_lines(new_bufnr, 0, -1, false, lines)
-        
+
         -- Set filetype for syntax highlighting
         local filetype = vim.fn.fnamemodify(file, ":e")
         if filetype ~= "" then
           vim.api.nvim_buf_set_option(new_bufnr, 'filetype', filetype)
         end
-        
+
         -- Don't mark as modified initially so it can be closed without saving
         vim.api.nvim_buf_set_option(new_bufnr, 'modified', false)
-        
+
         -- Open the buffer
         vim.api.nvim_set_current_buf(new_bufnr)
       end
@@ -290,7 +380,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     vim.ui.input({ prompt = "Commit message: " }, function(commit_msg)
       if commit_msg and commit_msg ~= "" then
         -- Run git commit with the message
-        local result = vim.fn.system("git commit -m " .. vim.fn.shellescape(commit_msg))
+        local result = run_git_command("git commit -m " .. vim.fn.shellescape(commit_msg))
         if vim.v.shell_error == 0 then
           vim.notify("Committed successfully", vim.log.levels.INFO)
           -- Refresh the git status buffer after a short delay
@@ -335,23 +425,24 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
       local cmd_result
       if in_staged_section then
         -- We're in staged section, so unstage
-        local has_commits = vim.fn.system("git rev-parse --verify HEAD 2>/dev/null")
+        local has_commits = run_git_command("git rev-parse --verify HEAD 2>/dev/null")
         if vim.v.shell_error == 0 then
           -- Has commits, can use reset HEAD
-          cmd_result = vim.fn.system("git reset HEAD " .. vim.fn.shellescape(file))
+          cmd_result = run_git_command("git reset HEAD " .. vim.fn.shellescape(file))
         else
           -- No commits yet, use rm --cached
-          cmd_result = vim.fn.system("git rm --cached " .. vim.fn.shellescape(file))
+          cmd_result = run_git_command("git rm --cached " .. vim.fn.shellescape(file))
         end
       else
         -- We're in modified/untracked section, so stage
         -- Check if file is deleted by seeing if it exists
-        local file_exists = vim.fn.filereadable(file) == 1
+        local absolute_file = get_absolute_path(file)
+        local file_exists = vim.fn.filereadable(absolute_file) == 1
         if file_exists then
-          cmd_result = vim.fn.system("git add " .. vim.fn.shellescape(file))
+          cmd_result = run_git_command("git add " .. vim.fn.shellescape(file))
         else
           -- File is deleted, use git rm to stage the deletion
-          cmd_result = vim.fn.system("git rm " .. vim.fn.shellescape(file))
+          cmd_result = run_git_command("git rm " .. vim.fn.shellescape(file))
         end
       end
 
@@ -382,9 +473,10 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
 
       if is_untracked then
         -- For untracked files, offer to delete them
+        local absolute_file = get_absolute_path(file)
         local confirm = vim.fn.confirm("Delete untracked file " .. file .. "? This cannot be undone.", "&Y\n&n", 1)
         if confirm == 1 then
-          local success = vim.fn.delete(file)
+          local success = vim.fn.delete(absolute_file)
           if success == 0 then
             vim.notify("Deleted " .. file, vim.log.levels.INFO)
             -- Refresh the buffer
@@ -397,7 +489,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         -- For tracked files, checkout as before
         local confirm = vim.fn.confirm("Checkout " .. file .. "? This will discard all changes.", "&Y\n&n", 1)
         if confirm == 1 then
-          local cmd_result = vim.fn.system("git checkout -- " .. vim.fn.shellescape(file))
+          local cmd_result = run_git_command("git checkout -- " .. vim.fn.shellescape(file))
 
           if vim.v.shell_error ~= 0 then
             vim.notify("Git checkout failed: " .. cmd_result, vim.log.levels.ERROR)
@@ -471,8 +563,7 @@ function M.open_git_status()
   end
 
   -- Check if we're in a git repository
-  local _ = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null")
-  if vim.v.shell_error ~= 0 then
+  if not get_git_root() then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
@@ -526,7 +617,7 @@ function M.setup(opts)
 
   -- Commands
   vim.api.nvim_create_user_command("GitStatus", M.open_git_status, {})
-  
+
   -- Auto-refresh on vim-fugitive operations
   vim.api.nvim_create_autocmd("User", {
     pattern = "FugitiveChanged",
