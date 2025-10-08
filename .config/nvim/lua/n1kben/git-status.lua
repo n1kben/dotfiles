@@ -29,68 +29,7 @@ local SECTIONS = {
 }
 
 
--- Convert relative file path to absolute path from git root
-local function get_absolute_path(relative_path)
-  local git_root = prelude.get_git_root()
-  if git_root then
-    return prelude.join_path(git_root, relative_path)
-  end
-  return relative_path -- fallback to relative path if git root not found
-end
 
--- Convert git root relative path to current working directory relative path
-local function get_cwd_relative_path(git_relative_path)
-  local git_root = prelude.get_git_root()
-  local cwd = vim.fn.getcwd()
-  
-  if not git_root then
-    return git_relative_path
-  end
-  
-  -- Get absolute path of the file
-  local absolute_path = prelude.join_path(git_root, git_relative_path)
-  
-  -- Convert to relative path from current working directory
-  -- fnamemodify with ":." gives relative path from cwd, but might return absolute if outside
-  local relative_path = vim.fn.fnamemodify(absolute_path, ":.")
-  
-  -- If it's still absolute (starts with /), calculate manual relative path
-  if relative_path:match("^/") then
-    -- Calculate relative path manually
-    local cwd_parts = vim.split(cwd, "/")
-    local file_parts = vim.split(absolute_path, "/")
-    
-    -- Find common prefix
-    local common_len = 0
-    for i = 1, math.min(#cwd_parts, #file_parts) do
-      if cwd_parts[i] == file_parts[i] then
-        common_len = i
-      else
-        break
-      end
-    end
-    
-    -- Build relative path
-    local up_dirs = #cwd_parts - common_len
-    local down_parts = {}
-    for i = common_len + 1, #file_parts do
-      table.insert(down_parts, file_parts[i])
-    end
-    
-    if up_dirs > 0 then
-      local up_path = string.rep("../", up_dirs):sub(1, -2) -- remove trailing /
-      if #down_parts > 0 then
-        relative_path = up_path .. "/" .. table.concat(down_parts, "/")
-      else
-        relative_path = up_path
-      end
-    else
-      relative_path = table.concat(down_parts, "/")
-    end
-  end
-  
-  return relative_path
-end
 
 
 -- Parse git command output and add files to result table
@@ -99,12 +38,12 @@ local function parse_git_output(output, section_key, result)
     for line in output:gmatch("[^\r\n]+") do
       if line ~= "" then
         if section_key == "untracked" then
-          local display_file = get_cwd_relative_path(line)
+          local display_file = prelude.git_relative_to_cwd_relative(line)
           table.insert(result[section_key], { status = "??", file = line, display_file = display_file })
         else
           local status, file = line:match("^(%S+)%s+(.+)$")
           if status and file then
-            local display_file = get_cwd_relative_path(file)
+            local display_file = prelude.git_relative_to_cwd_relative(file)
             table.insert(result[section_key], { status = status, file = file, display_file = display_file })
           end
         end
@@ -120,7 +59,7 @@ local function parse_git_status()
   local staged_output = prelude.run_git_command("git diff --name-status --cached")
   parse_git_output(staged_output, "staged", result)
 
-  -- Get modified files  
+  -- Get modified files
   local modified_output = prelude.run_git_command("git diff --name-status")
   parse_git_output(modified_output, "modified", result)
 
@@ -206,7 +145,7 @@ end
 -- Create and show a diff buffer
 local function create_diff_buffer(file, diff_output)
   local diff_bufnr = prelude.create_view_buffer('Diff: ' .. file, 'diff')
-  
+
   -- Temporarily make it modifiable to set content
   vim.api.nvim_buf_set_option(diff_bufnr, 'modifiable', true)
   local lines = vim.split(diff_output, '\n')
@@ -256,7 +195,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
       if is_file_untracked(file, git_data) then
         -- For untracked files, show diff with everything added
         local diff_cmd = "git diff --no-index /dev/null " .. vim.fn.shellescape(file)
-        
+
         -- Get diff output
         local diff_output = prelude.run_git_command(diff_cmd)
         -- git diff --no-index exits with 1 when files differ, which is expected
@@ -268,7 +207,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         create_diff_buffer(file, diff_output)
       else
         -- For tracked files, show diff as before
-        local absolute_file = get_absolute_path(file)
+        local absolute_file = prelude.git_relative_to_absolute(file)
         local diff_cmd
         if is_file_staged(file, git_data) then
           -- Show diff of staged changes (what will be committed)
@@ -303,7 +242,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     local file = file_map[line_num]
 
     if file then
-      local absolute_file = get_absolute_path(file)
+      local absolute_file = prelude.git_relative_to_absolute(file)
       local file_exists = vim.fn.filereadable(absolute_file) == 1
       if file_exists then
         -- Open existing file normally
@@ -381,7 +320,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
       else
         -- We're in modified/untracked section, so stage
         -- Check if file is deleted by seeing if it exists
-        local absolute_file = get_absolute_path(file)
+        local absolute_file = prelude.git_relative_to_absolute(file)
         local file_exists = vim.fn.filereadable(absolute_file) == 1
         if file_exists then
           cmd_result = prelude.run_git_command("git add " .. vim.fn.shellescape(file))
@@ -409,7 +348,7 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
     if file then
       if is_file_untracked(file, git_data) then
         -- For untracked files, offer to delete them
-        local absolute_file = get_absolute_path(file)
+        local absolute_file = prelude.git_relative_to_absolute(file)
         local confirm = vim.fn.confirm("Delete untracked file " .. file .. "? This cannot be undone.", "&Y\n&n", 1)
         if confirm == 1 then
           local success = vim.fn.delete(absolute_file)
@@ -542,8 +481,7 @@ function M.open_git_status()
 end
 
 -- Setup
-function M.setup(opts)
-
+function M.setup()
   -- Commands
   vim.api.nvim_create_user_command("GitStatus", M.open_git_status, {})
 

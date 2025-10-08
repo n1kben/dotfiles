@@ -69,6 +69,69 @@ function M.escape_path(path)
   return vim.fn.fnameescape(path)
 end
 
+-- Convert relative file path to absolute path from git root
+function M.git_relative_to_absolute(relative_path)
+  local git_root = M.get_git_root()
+  if git_root then
+    return M.join_path(git_root, relative_path)
+  end
+  return relative_path -- fallback to relative path if git root not found
+end
+
+-- Convert git root relative path to current working directory relative path
+function M.git_relative_to_cwd_relative(git_relative_path)
+  local git_root = M.get_git_root()
+  local cwd = vim.fn.getcwd()
+  
+  if not git_root then
+    return git_relative_path
+  end
+  
+  -- Get absolute path of the file
+  local absolute_path = M.join_path(git_root, git_relative_path)
+  
+  -- Convert to relative path from current working directory
+  -- fnamemodify with ":." gives relative path from cwd, but might return absolute if outside
+  local relative_path = vim.fn.fnamemodify(absolute_path, ":.")
+  
+  -- If it's still absolute (starts with /), calculate manual relative path
+  if relative_path:match("^/") then
+    -- Calculate relative path manually
+    local cwd_parts = vim.split(cwd, "/")
+    local file_parts = vim.split(absolute_path, "/")
+    
+    -- Find common prefix
+    local common_len = 0
+    for i = 1, math.min(#cwd_parts, #file_parts) do
+      if cwd_parts[i] == file_parts[i] then
+        common_len = i
+      else
+        break
+      end
+    end
+    
+    -- Build relative path
+    local up_dirs = #cwd_parts - common_len
+    local down_parts = {}
+    for i = common_len + 1, #file_parts do
+      table.insert(down_parts, file_parts[i])
+    end
+    
+    if up_dirs > 0 then
+      local up_path = string.rep("../", up_dirs):sub(1, -2) -- remove trailing /
+      if #down_parts > 0 then
+        relative_path = up_path .. "/" .. table.concat(down_parts, "/")
+      else
+        relative_path = up_path
+      end
+    else
+      relative_path = table.concat(down_parts, "/")
+    end
+  end
+  
+  return relative_path
+end
+
 -- Walk up directory tree looking for a file
 function M.find_file_upwards(filename, start_path)
   start_path = start_path or vim.fn.getcwd()
