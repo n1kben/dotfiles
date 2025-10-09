@@ -5,7 +5,7 @@ return {
     local lualine = require("lualine")
     lualine.setup({
       options = {
-        theme = "catppuccin",
+        theme = "ir-black", -- Custom IR Black lualine theme
         padding = { left = 0, right = 0 },
         section_separators = "",
         component_separators = "",
