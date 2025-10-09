@@ -308,9 +308,12 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
         end
       else
         -- We're in modified/untracked section, so stage
-        -- Check if file is deleted by seeing if it exists
+        -- Check if file/folder exists and handle appropriately
         local file_exists = vim.fn.filereadable(file) == 1
-        if file_exists then
+        local dir_exists = vim.fn.isdirectory(file) == 1
+        
+        if file_exists or dir_exists then
+          -- File or directory exists, add it
           cmd_result = vim.fn.system("git add " .. vim.fn.shellescape(file))
         else
           -- File is deleted, use git rm to stage the deletion
@@ -335,10 +338,20 @@ local function setup_buffer_keymaps(bufnr, file_map, git_data)
 
     if file then
       if is_file_untracked(file, git_data) then
-        -- For untracked files, offer to delete them
-        local confirm = vim.fn.confirm("Delete untracked file " .. file .. "? This cannot be undone.", "&Y\n&n", 1)
+        -- For untracked files/folders, offer to delete them
+        local is_dir = vim.fn.isdirectory(file) == 1
+        local item_type = is_dir and "folder" or "file"
+        local confirm = vim.fn.confirm("Delete untracked " .. item_type .. " " .. file .. "? This cannot be undone.", "&Y\n&n", 1)
         if confirm == 1 then
-          local success = vim.fn.delete(file)
+          local success
+          if is_dir then
+            -- Delete directory recursively
+            success = vim.fn.delete(file, "rf")
+          else
+            -- Delete file
+            success = vim.fn.delete(file)
+          end
+          
           if success == 0 then
             vim.notify("Deleted " .. file, vim.log.levels.INFO)
             -- Refresh the buffer
