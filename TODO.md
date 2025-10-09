@@ -1,5 +1,6 @@
 # To-do's
 
-- [ ] Beautiful diffs in neovim using conceal.
+- [ ] Replace TSC with async :make
+- [ ] Beautiful diffs in neovim using conceal?
 
 

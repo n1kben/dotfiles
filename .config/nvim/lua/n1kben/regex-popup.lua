@@ -8,6 +8,8 @@ function RegexLayout:new(config)
   local self = setmetatable({}, RegexLayout)
   self.config = config or {}
   self.windows = {}
+  self.is_mounted = false
+  self.autocmd_groups = {}
   return self
 end
 
@@ -51,14 +53,29 @@ function RegexLayout:mount()
     border = 'rounded',
   })
 
-  -- Configure buffers
-  vim.api.nvim_buf_set_option(main_bufnr, 'modifiable', true)
-  vim.api.nvim_buf_set_option(main_bufnr, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(main_bufnr, 'filetype', 'text')
+  -- Configure buffers (with pcall like Telescope)
+  pcall(vim.api.nvim_buf_set_option, main_bufnr, 'modifiable', true)
+  pcall(vim.api.nvim_buf_set_option, main_bufnr, 'bufhidden', 'wipe')
+  pcall(vim.api.nvim_buf_set_option, main_bufnr, 'buftype', 'nofile')
+  pcall(vim.api.nvim_buf_set_option, main_bufnr, 'swapfile', false)
+  pcall(vim.api.nvim_buf_set_option, main_bufnr, 'filetype', 'RegexTestText')
+  pcall(vim.api.nvim_buf_set_option, main_bufnr, 'tabstop', 1) -- Like Telescope #1834
 
-  vim.api.nvim_buf_set_option(input_bufnr, 'modifiable', true)
-  vim.api.nvim_buf_set_option(input_bufnr, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(input_bufnr, 'filetype', 'regex')
+  pcall(vim.api.nvim_buf_set_option, input_bufnr, 'modifiable', true)
+  pcall(vim.api.nvim_buf_set_option, input_bufnr, 'bufhidden', 'wipe')
+  pcall(vim.api.nvim_buf_set_option, input_bufnr, 'buftype', 'nofile')
+  pcall(vim.api.nvim_buf_set_option, input_bufnr, 'swapfile', false)
+  pcall(vim.api.nvim_buf_set_option, input_bufnr, 'filetype', 'RegexInput')
+  pcall(vim.api.nvim_buf_set_option, input_bufnr, 'tabstop', 1)
+  
+  -- Set window options like Telescope
+  pcall(vim.api.nvim_win_set_option, main_win, 'wrap', false)
+  pcall(vim.api.nvim_win_set_option, main_win, 'signcolumn', 'no')
+  pcall(vim.api.nvim_win_set_option, main_win, 'foldlevel', 100)
+  
+  pcall(vim.api.nvim_win_set_option, input_win, 'wrap', true)
+  pcall(vim.api.nvim_win_set_option, input_win, 'signcolumn', 'no')
+  pcall(vim.api.nvim_win_set_option, input_win, 'foldlevel', 100)
 
   -- Set initial content
   if self.config.initial_regex then
@@ -76,14 +93,19 @@ function RegexLayout:mount()
     bufnr = input_bufnr,
   }
 
+  -- Mark as mounted
+  self.is_mounted = true
+
   -- Focus main window initially
   vim.api.nvim_set_current_win(main_win)
 
   -- Set up keymaps for navigation between windows
   self:setup_keymaps()
 
-  -- Set up autocmds to close when buffers are deleted
-  self:setup_close_autocmds()
+  -- Set up autocmds to close when buffers are deleted (with slight delay for first run)
+  vim.schedule(function()
+    self:setup_close_autocmds()
+  end)
 end
 
 function RegexLayout:setup_keymaps()
@@ -96,19 +118,36 @@ function RegexLayout:setup_keymaps()
   local main_winid = self.windows.main.winid
   local input_winid = self.windows.input.winid
 
-  -- Simple Tab navigation between popup windows
+  -- Modern keymap setup like Telescope (both normal and insert modes)
   local function setup_tab_nav(bufnr)
-    vim.api.nvim_buf_set_keymap(bufnr, 'n', '<Tab>', '', {
-      noremap = true,
-      silent = true,
-      callback = function()
-        local current_win = vim.api.nvim_get_current_win()
-        if current_win == main_winid and vim.api.nvim_win_is_valid(input_winid) then
-          vim.api.nvim_set_current_win(input_winid)
-        elseif current_win == input_winid and vim.api.nvim_win_is_valid(main_winid) then
-          vim.api.nvim_set_current_win(main_winid)
-        end
+    local function switch_windows()
+      -- Validate layout is still mounted
+      if not self.is_mounted then
+        return
       end
+      
+      -- Validate all windows and buffers exist
+      if not (vim.api.nvim_win_is_valid(main_winid) and 
+              vim.api.nvim_win_is_valid(input_winid) and
+              vim.api.nvim_buf_is_valid(main_bufnr) and
+              vim.api.nvim_buf_is_valid(input_bufnr)) then
+        self:unmount()
+        return
+      end
+      
+      local current_win = vim.api.nvim_get_current_win()
+      if current_win == main_winid then
+        pcall(vim.api.nvim_set_current_win, input_winid)
+      elseif current_win == input_winid then
+        pcall(vim.api.nvim_set_current_win, main_winid)
+      end
+    end
+    
+    -- Set up Tab for normal mode only
+    vim.keymap.set('n', '<Tab>', switch_windows, {
+      buffer = bufnr,
+      silent = true,
+      desc = 'Switch between regex windows'
     })
   end
 
@@ -117,41 +156,54 @@ function RegexLayout:setup_keymaps()
 end
 
 function RegexLayout:setup_close_autocmds()
-  if not self.windows.main or not self.windows.input then
+  if not self.windows.main or not self.windows.input or not self.is_mounted then
     return
   end
 
   local main_bufnr = self.windows.main.bufnr
   local input_bufnr = self.windows.input.bufnr
+  local main_winid = self.windows.main.winid
+  local input_winid = self.windows.input.winid
 
   -- Create autocmd group for this layout instance
   local group = vim.api.nvim_create_augroup("RegexPopupClose_" .. main_bufnr, { clear = true })
 
-  -- Close layout when either buffer is deleted/wiped
-  for _, bufnr in ipairs({ main_bufnr, input_bufnr }) do
-    vim.api.nvim_create_autocmd({ "BufDelete", "BufWipeout" }, {
-      group = group,
-      buffer = bufnr,
-      callback = function() self:unmount() end
-    })
-  end
+  -- Simple approach: just listen for any window closing
+  -- This catches :q, :close, :bd, etc. all in one place
+  vim.api.nvim_create_autocmd({ "WinClosed" }, {
+    group = group,
+    callback = function(event)
+      local closed_winid = tonumber(event.match)
+      -- Check if the closed window belongs to our layout
+      if (closed_winid == main_winid or closed_winid == input_winid) and 
+         self.is_mounted and M._current_layout == self then
+        self:unmount()
+      end
+    end
+  })
 
   -- Store group for cleanup
-  self.autocmd_group = group
+  table.insert(self.autocmd_groups, group)
 end
 
 function RegexLayout:unmount()
-  -- Clear autocmds for this layout instance
-  if self.autocmd_group then
-    pcall(vim.api.nvim_del_augroup_by_id, self.autocmd_group)
-    self.autocmd_group = nil
+  -- Prevent multiple unmount calls
+  if not self.is_mounted then
+    return
   end
+  
+  self.is_mounted = false
 
+  -- Clear all autocmd groups for this layout instance
+  for _, group in ipairs(self.autocmd_groups) do
+    pcall(vim.api.nvim_del_augroup_by_id, group)
+  end
+  self.autocmd_groups = {}
 
-  -- Close all windows and clean up
+  -- Simply close all windows - let Neovim handle buffer cleanup
   for name, window in pairs(self.windows) do
-    if window.winid and vim.api.nvim_win_is_valid(window.winid) then
-      vim.api.nvim_win_close(window.winid, true)
+    if window.winid and pcall(vim.api.nvim_win_is_valid, window.winid) and vim.api.nvim_win_is_valid(window.winid) then
+      pcall(vim.api.nvim_win_close, window.winid, true)
     end
   end
   self.windows = {}
@@ -275,7 +327,9 @@ local function highlight_matches(buf, regex)
     }
   ]], vim.json.encode(regex), vim.json.encode(lines))
 
-  local result = vim.fn.system('node -e ' .. vim.fn.shellescape(js_code))
+  -- Use timeout command to prevent hanging
+  local cmd = string.format('timeout 2s node -e %s', vim.fn.shellescape(js_code))
+  local result = vim.fn.system(cmd)
 
   -- Extract JSON result from node output
   local result_lines = vim.split(result, '\n')
@@ -330,6 +384,11 @@ local function highlight_matches(buf, regex)
 end
 
 function M.create_regex_window(regex)
+  -- Close any existing layout first
+  if M._current_layout and M._current_layout.is_mounted then
+    M._current_layout:unmount()
+  end
+  
   setup_highlight_groups()
 
   -- Create layout with initial regex
@@ -343,21 +402,46 @@ function M.create_regex_window(regex)
   -- Get references to the buffers for easier access
   local text_buf = layout.windows.main.bufnr
   local regex_buf = layout.windows.input.bufnr
+  
+  -- Debounce timer for highlights
+  local highlight_timer = nil
 
   local function update_highlights()
-    local current_regex = layout:get_current_regex()
-    if current_regex ~= "" then
-      pcall(function()
-        highlight_matches(text_buf, current_regex)
-      end)
-    else
-      vim.api.nvim_buf_clear_namespace(text_buf, -1, 0, -1)
+    -- Cancel previous timer
+    if highlight_timer then
+      highlight_timer:stop()
+      highlight_timer:close()
     end
+    
+    -- Debounce highlights to prevent crashes on rapid typing (Telescope style)
+    highlight_timer = vim.uv.new_timer()
+    highlight_timer:start(150, 0, vim.schedule_wrap(function() -- Use schedule_wrap like Telescope
+      if not layout.is_mounted then
+        return
+      end
+      
+      local current_regex = layout:get_current_regex()
+      if current_regex ~= "" then
+        pcall(highlight_matches, text_buf, current_regex)
+      else
+        pcall(vim.api.nvim_buf_clear_namespace, text_buf, -1, 0, -1)
+      end
+      
+      if highlight_timer then
+        highlight_timer:close()
+        highlight_timer = nil
+      end
+    end))
   end
+
+  -- Create autocmd group for this layout instance
+  local autocmd_group = vim.api.nvim_create_augroup("RegexPopupHighlight_" .. text_buf, { clear = true })
+  table.insert(layout.autocmd_groups, autocmd_group)
 
   -- Update highlights when text or regex changes
   for _, bufnr in ipairs({ text_buf, regex_buf }) do
     vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+      group = autocmd_group,
       buffer = bufnr,
       callback = update_highlights,
     })
@@ -384,7 +468,6 @@ end
 function M.close_regex_popup()
   if M._current_layout then
     M._current_layout:unmount()
-    M._current_layout = nil
   end
 end
 
@@ -395,7 +478,7 @@ end
 
 -- Function to toggle the regex popup
 function M.toggle_regex_popup()
-  if M._current_layout then
+  if M._current_layout and M._current_layout.is_mounted then
     M.close_regex_popup()
   else
     M.show_regex_popup()
@@ -404,10 +487,15 @@ end
 
 -- Setup function to create commands
 function M.setup()
-  -- Create Vim command for empty regex popup
+  -- Create Vim command for regex tester
+  vim.api.nvim_create_user_command('RegexTester', function()
+    M.show_empty_regex_popup()
+  end, { desc = 'Open regex tester for pattern experimentation' })
+  
+  -- Keep old command for backwards compatibility
   vim.api.nvim_create_user_command('RegexPopup', function()
     M.show_empty_regex_popup()
-  end, { desc = 'Open empty regex popup for experimentation' })
+  end, { desc = 'Open regex tester (deprecated, use RegexTester)' })
 end
 
 return M

@@ -6,7 +6,7 @@ return {
       "<leader>p",
       mode = "n",
       function()
-        require("fzf-lua").combine({ pickers = "buffers;files", previewer = false })
+        require("fzf-lua").combine({ pickers = "buffers;oldfiles;files", previewer = false })
       end,
       { desc = "FZF: MRU files" },
     },
@@ -87,29 +87,24 @@ return {
     local fzf = require("fzf-lua")
     local opts = {
       fzf_colors = true,
-      -- winopts = {
-      --   height = 1,      -- window height
-      --   width = 1,       -- window width
-      --   row = 0,         -- window row position (0=top, 1=bottom)
-      --   col = 0,         -- window col position (0=left, 1=right)
-      --   border = "none", -- window border style
-      -- },
+      winopts = {
+        height = 1,      -- window height
+        width = 1,       -- window width
+        row = 0,         -- window row position (0=top, 1=bottom)
+        col = 0,         -- window col position (0=left, 1=right)
+        border = "none", -- window border style
+      },
       buffers = {
         actions = false,
         ignore_current_buffer = true,
         fzf_opts = { ["--delimiter"] = fzf.utils.nbsp, ["--with-nth"] = "-1.." },
       },
+      oldfiles = {
+        cwd_only = true,
+      },
       keymaps = {
         previewer = false,
       },
-      -- lsp = {
-      --   symbols = {
-      --     previewer = false,
-      --   },
-      --   workspaceSymbols = {
-      --     previewer = false,
-      --   },
-      -- },
       commands = {
         previewer = false,
       },
