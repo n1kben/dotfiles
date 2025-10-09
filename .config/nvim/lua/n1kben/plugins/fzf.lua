@@ -82,6 +82,14 @@ return {
       end,
       { desc = "FZF: Undo tree" },
     },
+    {
+      "<leader><space>",
+      mode = "n",
+      function()
+        require("fzf-lua").builtin()
+      end,
+      { desc = "FZF: Builtin" },
+    }
   },
   config = function()
     local fzf = require("fzf-lua")
@@ -101,6 +109,9 @@ return {
       },
       oldfiles = {
         cwd_only = true,
+      },
+      nvim_options = {
+        previewer = false,
       },
       keymaps = {
         previewer = false,
