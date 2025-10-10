@@ -78,6 +78,7 @@ alias gk="git rebase --continue || git merge --continue"
 
 # FZF
 # ----------------------------
+source <(fzf --zsh)
 export FZF_DEFAULT_OPTS="--color 16 --reverse"
 
 
@@ -140,9 +141,9 @@ alias r="source ~/.zshenv && source ~/.zprofile && source ~/.zshrc"
 # History
 # ----------------------------
 # Number of commands to store in memory
-export HISTSIZE=10000
+export HISTSIZE=10000000
 # Number of commands to store in disk
-export SAVEHIST=10000
+export SAVEHIST=10000000
 # Ignore duplicated commands during session
 setopt HIST_IGNORE_ALL_DUPS
 # Ignore duplicated commands when saving to hist file
