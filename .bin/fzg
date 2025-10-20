@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#
+# fzg — interactive fzf helpers for git
+#
+
+is_in_git_repo() {
+  git rev-parse HEAD > /dev/null 2>&1
+}
+
+git_files_fzf() {
+  is_in_git_repo || return
+  git -c color.status=always status . --short |
+    fzf -m --ansi --nth 2..,.. \
+      --preview '(git diff --color=always -- {-1} | sed 1,4d; cat {-1}) | head -500' |
+    cut -c4- | sed 's/.* -> //'
+}
+
+git_branch_fzf() {
+  is_in_git_repo || return
+  git branch -a --color=always | grep -v '/HEAD\s' |
+    fzf --ansi --multi --preview-window right:60% \
+      --preview 'git log --oneline --graph --date=short --pretty="format:%C(auto)%cd %h%d %s" $(sed s/^..// <<< {} | cut -d" " -f1) | head -200' |
+    sed 's/^..//' | cut -d' ' -f1 |
+    sed 's/^remotes\/[^\/]*\///'
+}
+
+git_history_fzf() {
+  is_in_git_repo || return
+  git log --date=short --format="%C(green)%C(bold)%cd %C(auto)%h%d %s (%an)" --graph --color=always |
+    fzf --ansi --no-sort --reverse --multi \
+      --preview 'grep -o "[a-f0-9]\{7,\}" <<< {} | xargs git show --color=always | head -200' |
+    grep -o "[a-f0-9]\{7,\}"
+}
+
+git_stash_fzf() {
+  is_in_git_repo || return
+  git stash list | fzf --reverse -d: --preview 'git show --color=always {1}' |
+    cut -d: -f1
+}
+
+git_worktree_fzf() {
+  is_in_git_repo || return
+  git worktree list | fzf --reverse | awk '{print $1}'
+}
+
+usage() {
+  cat <<EOF
+Fuzzy search git commands with fzf
+
+Usage: $(basename "$0") <command>
+
+Commands:
+  f   files     (git status)
+  b   branch    (git branch)
+  h   history   (git commits)
+  s   stash     (git stash)
+  w   worktree  (git worktree)
+EOF
+}
+
+case "$1" in
+  f|files)    git_files_fzf ;;
+  b|branch)   git_branch_fzf ;;
+  h|history)  git_history_fzf ;;
+  s|stash)    git_stash_fzf ;;
+  w|worktree) git_worktree_fzf ;;
+  *)          usage ;;
+esac

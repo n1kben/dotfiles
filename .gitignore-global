@@ -1,0 +1,14 @@
+.ignore
+.idea
+.dbxignore
+TODO.md
+tags
+.transifexrc
+.DS_Store
+*.swp
+*.dump
+ngrok
+.unisonHistory
+.claude
+.env
+.env.*
