@@ -172,6 +172,18 @@ v() {
 # ----------------------------
 export NODE_ENV="development"
 
+# Tmux
+# ----------------------------
+
+fztmux() {
+  local selected_session
+  selected_session=$(tmux list-sessions -F "#{session_name}" | fzf) || return
+  tmux attach -d -t "$selected_session"
+  zle accept-line
+}
+zle -N fztmux
+bindkey '^P' fztmux
+
 
 # Fuzzy cd
 # ----------------------------
@@ -183,7 +195,7 @@ fzcd() {
   zle accept-line
 }
 zle -N fzcd
-bindkey '^P' fzcd
+bindkey '^F' fzcd
 
 
 # Command
