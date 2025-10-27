@@ -244,11 +244,19 @@ add_precmd_hook "_update_prompt"
 
 # Title
 # ----------------------------
-DISABLE_AUTO_TITLE="true"
-
 _update_title() {
   # Skip if user has manually set title
   [[ -n "$MANUAL_TITLE" ]] && return
+  
+  # Check for .title file in current directory
+  if [[ -f ".title" ]]; then
+    local title_content
+    title_content=$(cat .title 2>/dev/null | head -1)
+    if [[ -n "$title_content" ]]; then
+      echo -ne "\e]1;$title_content\a"
+      return
+    fi
+  fi
   
   local git_root git_branch
   git_root=$(git rev-parse --show-toplevel 2>/dev/null)
