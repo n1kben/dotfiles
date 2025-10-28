@@ -72,6 +72,31 @@ vim.keymap.set(
 vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
 vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
 
+-- Splits
+vim.keymap.set("n", "<C-h>", "<C-w>h", { desc = "Move to split left" })
+vim.keymap.set("n", "<C-j>", "<C-w>j", { desc = "Move to split below" })
+vim.keymap.set("n", "<C-k>", "<C-w>k", { desc = "Move to split above" })
+vim.keymap.set("n", "<C-l>", "<C-w>l", { desc = "Move to split right" })
+
+-- Toggle maximize current split (zoom) in Neovim
+local function toggle_zoom()
+  -- Check if we already stored the layout
+  if vim.t.zoom_restore then
+    -- Restore previous layout
+    vim.cmd(vim.t.zoom_restore)
+    vim.t.zoom_restore = nil
+  else
+    -- Save current layout
+    vim.t.zoom_restore = vim.fn.winrestcmd()
+    -- Maximize current window
+    vim.cmd("wincmd |") -- maximize width
+    vim.cmd("wincmd _") -- maximize height
+  end
+end
+
+-- Map to <leader>z
+vim.keymap.set("n", "<CR>", toggle_zoom, { desc = "Toggle maximize current split" })
+
 -- LSP
 vim.keymap.set("n", "gk", vim.lsp.buf.hover, { desc = "Hover" })
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })

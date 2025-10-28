@@ -2,7 +2,7 @@
   stage = !git add
   unstage = !git reset
   staged = !git diff --cached
-  undo = !git reset --soft HEAD~1
+  undo = !git reset --mixed HEAD~1
   pop = !git stash pop
   amend = !git commit --amend --no-edit
   squash = !git rebase -i master
