@@ -1,5 +1,6 @@
 return {
   "supermaven-inc/supermaven-nvim",
+  enabled = true,
   event = "InsertEnter",
   opts = {
     keymaps = {
