@@ -8,7 +8,6 @@ require("n1kben.keymaps")
 require("n1kben.lazy")
 require("n1kben.options")
 require("n1kben.lsp")
-require("n1kben.formatters")
 
 -- GitCast is now loaded as a plugin via lazy.nvim (see plugins/gitcast.lua)
 
