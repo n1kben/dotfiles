@@ -57,7 +57,7 @@ function M.format(opts)
     local filename = vim.api.nvim_buf_get_name(buf)
     cmd = cmd:gsub("${filename}", filename)
     cmd = cmd:gsub("${filetype}", ft)
-    
+
     local formatted = vim.fn.system(cmd, content)
 
     if vim.v.shell_error ~= 0 then
@@ -155,3 +155,4 @@ function M.setup(opts)
 end
 
 return M
+

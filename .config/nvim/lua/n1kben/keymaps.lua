@@ -73,6 +73,7 @@ vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" }
 vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
 
 -- Splits
+vim.keymap.set("n", "=", "<C-w>=", { desc = "Balance splits" })
 vim.keymap.set("n", "<C-h>", "<C-w>h", { desc = "Move to split left" })
 vim.keymap.set("n", "<C-j>", "<C-w>j", { desc = "Move to split below" })
 vim.keymap.set("n", "<C-k>", "<C-w>k", { desc = "Move to split above" })
