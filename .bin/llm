@@ -1,0 +1,278 @@
+#!/bin/bash
+
+# LLM CLI - Simple bash CLI for Claude API
+set -euo pipefail
+
+# Default configuration
+DEFAULT_MODEL="claude-sonnet-4-5-20250929"
+DEFAULT_MAX_TOKENS=4096
+DEFAULT_TEMPERATURE=0.7
+
+# Show usage
+show_help() {
+  cat <<EOF
+Usage: echo "content" | llm [prompt-file] [options]
+
+Options:
+  -s, --system <text>       System prompt string
+  -p, --prepend <text>      Text to prepend to piped content
+  -a, --append <text>       Text to append to piped content
+  -m, --model <model>       Model to use (default: $DEFAULT_MODEL)
+  -T, --max-tokens <num>    Max tokens in response (default: $DEFAULT_MAX_TOKENS)
+  -t, --temperature <num>   Temperature 0-1 (default: $DEFAULT_TEMPERATURE)
+  --list-models            List available models from Claude API
+  -h, --help               Show this help message
+  -v, --version            Show version
+
+Available Models:
+  Use --list-models to see current models from API
+
+Examples:
+  # Basic usage
+  echo "Hello world" | llm
+
+  # List available models
+  llm --list-models
+
+  # System prompt from file
+  echo "def foo(): pass" | llm ~/prompts/review.md
+
+  # Inline system prompt
+  echo "code" | llm -s "You are a code reviewer"
+
+  # Command substitution in system prompt
+  echo "import foo" | llm -s "Fix imports. Available: \$(tree)"
+  echo "code" | llm -s "\$(cat style.md) Review this code"
+
+  # Message wrapping (great for vim visual select)
+  echo "code" | llm -p "Fix this:" -a "Make it idiomatic"
+
+  # Vim usage: :'<,'>!llm review.md -p "Review:"
+
+  # Complex example
+  tree | llm -s "Explain structure" -p "Project layout:" --temperature 0.3
+
+System Prompt Logic:
+  Pass a filename as first argument to use as system prompt.
+  Use -s flag for inline string prompts (supports command substitution).
+  Cannot mix both file and -s flag (will error).
+
+Environment:
+  ANTHROPIC_API_KEY        Required API key for Claude
+EOF
+}
+
+# Check if API key is available
+check_api_key() {
+  if [[ -z ${ANTHROPIC_API_KEY:-} ]]; then
+    echo "Error: ANTHROPIC_API_KEY environment variable is required" >&2
+    exit 1
+  fi
+}
+
+# Handle API errors from response
+check_api_error() {
+  local response="$1"
+  local error
+  error=$(echo "$response" | jq -r '.error.message // empty' 2>/dev/null)
+  if [[ -n $error ]]; then
+    echo "API Error: $error" >&2
+    exit 1
+  fi
+}
+
+# List available models from Claude API
+list_models() {
+  check_api_key
+
+  local response
+  response=$(curl -s "https://api.anthropic.com/v1/models" \
+    -H "x-api-key: $ANTHROPIC_API_KEY" \
+    -H "anthropic-version: 2023-06-01")
+
+  # Check for curl errors
+  if [[ $? -ne 0 ]]; then
+    echo "Error: Failed to fetch models from Claude API" >&2
+    exit 1
+  fi
+
+  check_api_error "$response"
+
+  # Display models
+  echo "Available Models:"
+  echo "$response" | jq -r '.data[]? | "  \(.id)\t\(.display_name // .id)"' 2>/dev/null || {
+    echo "Error: Unable to parse models response" >&2
+    exit 1
+  }
+}
+
+# Make Claude API request
+make_claude_request() {
+  local model="$1"
+  local max_tokens="$2"
+  local temperature="$3"
+  local system_prompt="$4"
+  local user_content="$5"
+
+  local payload
+  payload=$(jq -n \
+    --arg model "$model" \
+    --argjson max_tokens "$max_tokens" \
+    --arg temperature "$temperature" \
+    --arg system "$system_prompt" \
+    --arg content "$user_content" \
+    '{
+      model: $model,
+      max_tokens: $max_tokens,
+      temperature: ($temperature | tonumber),
+      messages: [{
+        role: "user",
+        content: $content
+      }],
+      system: $system
+    }')
+
+  local response
+  response=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: $ANTHROPIC_API_KEY" \
+    -H "anthropic-version: 2023-06-01" \
+    -d "$payload")
+
+  check_api_error "$response"
+
+  # Extract response text
+  echo "$response" | jq -r '.content[0].text // empty' || {
+    echo "Error: Unexpected response format" >&2
+    exit 1
+  }
+}
+
+# Main function
+main() {
+  local model="$DEFAULT_MODEL"
+  local max_tokens="$DEFAULT_MAX_TOKENS"
+  local temperature="$DEFAULT_TEMPERATURE"
+  local system_prompt="You are a helpful assistant."
+  local prefix=""
+  local append=""
+  local prompt_file=""
+  local has_system_flag=false
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -s | --system)
+        system_prompt="$2"
+        has_system_flag=true
+        shift 2
+        ;;
+      -p | --prepend)
+        prefix="$2"
+        shift 2
+        ;;
+      -a | --append)
+        append="$2"
+        shift 2
+        ;;
+      -m | --model)
+        model="$2"
+        shift 2
+        ;;
+      -T | --max-tokens)
+        max_tokens="$2"
+        shift 2
+        ;;
+      -t | --temperature)
+        temperature="$2"
+        shift 2
+        ;;
+      --list-models)
+        list_models
+        exit 0
+        ;;
+      -h | --help)
+        show_help
+        exit 0
+        ;;
+      -v | --version)
+        echo "llm version 2.0.0"
+        exit 0
+        ;;
+      -*)
+        echo "Error: Unknown option $1" >&2
+        show_help >&2
+        exit 1
+        ;;
+      *)
+        # First non-option argument should be prompt file
+        if [[ -n $prompt_file ]]; then
+          echo "Error: Multiple files specified: $prompt_file and $1" >&2
+          exit 1
+        fi
+        prompt_file="$1"
+        shift
+        ;;
+    esac
+  done
+
+  # Check for conflicting system prompt sources
+  if [[ $has_system_flag == true && -n $prompt_file ]]; then
+    echo "Error: Cannot specify both -s/--system flag and prompt file" >&2
+    echo "Use either: llm -s 'prompt' or llm prompt-file.md" >&2
+    exit 1
+  fi
+
+  # Load system prompt from file if provided
+  if [[ -n $prompt_file ]]; then
+    if [[ -f $prompt_file && -r $prompt_file ]]; then
+      system_prompt=$(cat "$prompt_file")
+    else
+      echo "Error: Prompt file not found or not readable: $prompt_file" >&2
+      exit 1
+    fi
+  fi
+
+  check_api_key
+
+  # Check for piped input
+  if [[ -t 0 ]]; then
+    echo "Error: No input received. This script expects piped input." >&2
+    echo 'Usage: echo "your message" | llm [options]' >&2
+    exit 1
+  fi
+
+  # Read input
+  local input
+  input=$(cat)
+  if [[ -z $input ]]; then
+    echo "Error: No input provided via pipe" >&2
+    exit 1
+  fi
+
+  # Build user content with prefix/append
+  local user_content="$input"
+  [[ -n $prefix ]] && user_content="$prefix
+
+$user_content"
+  [[ -n $append ]] && user_content="$user_content
+
+$append"
+
+  # Make API request
+  make_claude_request "$model" "$max_tokens" "$temperature" "$system_prompt" "$user_content"
+}
+
+# Check dependencies
+if ! command -v curl >/dev/null 2>&1; then
+  echo "Error: curl is required but not installed" >&2
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq is required but not installed" >&2
+  exit 1
+fi
+
+# Run main function
+main "$@"
