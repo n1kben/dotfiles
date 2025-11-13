@@ -75,6 +75,14 @@ return {
       { desc = "FZF: Resume" },
     },
     {
+      "<leader><BS>",
+      mode = "n",
+      function()
+        require("fzf-lua").resume()
+      end,
+      { desc = "FZF: Resume" },
+    },
+    {
       "<leader>u",
       mode = "n",
       function()
@@ -83,7 +91,7 @@ return {
       { desc = "FZF: Undo tree" },
     },
     {
-      "<leader><space>",
+      "<leader>?",
       mode = "n",
       function()
         require("fzf-lua").builtin()

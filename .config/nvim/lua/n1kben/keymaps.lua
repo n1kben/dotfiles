@@ -1,6 +1,8 @@
 -- Leader
-vim.g.mapleader = " "
-vim.g.maplocalleader = " "
+vim.keymap.set('n', '<Space>', '<Nop>', { noremap = true, silent = true })
+vim.keymap.set('v', '<Space>', '<Nop>', { noremap = true, silent = true })
+vim.g.mapleader = ' '
+vim.g.maplocalleader = ' '
 
 _G.config = _G.config or {}
 function config.visual_set_search(cmdtype)
@@ -71,6 +73,12 @@ vim.keymap.set(
 -- Diagnostics
 vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
 vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+vim.keymap.set("n", "md", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
+vim.keymap.set("n", "Md", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+
+-- Quickfix
+vim.keymap.set("n", "mq", "]q", { desc = "Next quickfix" })
+vim.keymap.set("n", "Mq", "[q", { desc = "Previous quickfix" })
 
 -- Splits
 vim.keymap.set("n", "=", "<C-w>=", { desc = "Balance splits" })
@@ -94,13 +102,15 @@ local function toggle_zoom()
     vim.cmd("wincmd _") -- maximize height
   end
 end
-
--- Map to <leader>z
-vim.keymap.set("n", "<CR>", toggle_zoom, { desc = "Toggle maximize current split" })
+vim.keymap.set("n", "<C-CR>", toggle_zoom, { desc = "Toggle maximize current split" })
 
 -- LSP
-vim.keymap.set("n", "gk", vim.lsp.buf.hover, { desc = "Hover" })
-vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
+vim.keymap.set("n", "gk", vim.lsp.buf.hover, { desc = "LSP: Hover" })
+vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "LSP: Go to definition" })
+vim.keymap.set("n", "gD", vim.lsp.buf.declaration, { desc = "LSP: Go to declaration" })
+vim.keymap.set("n", "<leader>r", vim.lsp.buf.references, { desc = "LSP: References" })
+vim.keymap.set("n", "gra", vim.lsp.buf.code_action, { desc = "LSP: Code action" })
+vim.keymap.set("n", "grr", vim.lsp.buf.rename, { desc = "LSP: Rename" })
 
 -- Join lines
 vim.keymap.set("n", "gj", "J", { desc = "Join lines" })

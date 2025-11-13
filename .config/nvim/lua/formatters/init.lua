@@ -55,7 +55,9 @@ function M.format(opts)
     -- Build the command, replacing placeholders
     local cmd = fmt.cmd
     local filename = vim.api.nvim_buf_get_name(buf)
-    cmd = cmd:gsub("${filename}", filename)
+    -- Escape the filename for shell use
+    local escaped_filename = vim.fn.shellescape(filename)
+    cmd = cmd:gsub("${filename}", escaped_filename)
     cmd = cmd:gsub("${filetype}", ft)
 
     local formatted = vim.fn.system(cmd, content)

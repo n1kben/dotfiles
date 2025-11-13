@@ -1,3 +1,4 @@
+source "$HOME/.env"
 export EDITOR=nvim
 export MANPAGER="nvim +Man!"
 export VOLTA_HOME="$HOME/.volta"
