@@ -1,0 +1,267 @@
+#!/bin/bash
+
+# git-rub: Move files between branches/commits in git worktrees
+# Usage: git rub -f <file> [-b <branch> | -c <commit>]
+
+set -e
+
+show_help() {
+    cat << EOF
+Usage: git rub -f <file> [-b <branch> | -c <commit>]
+
+Move a file from the current worktree to another branch or commit.
+
+Options:
+    -f <file>       File to move (required)
+    -b <branch>     Target branch (adds to unstaged area of that branch's worktree)
+    -c <commit>     Target commit hash (commits the file to that commit's branch)
+    -h              Show this help message
+
+Examples:
+    git rub -f somefile.png -b feature-branch
+        Move file to feature-branch's worktree (unstaged)
+
+    git rub -f somefile.png -c abc123
+        Move file and add it to commit abc123 (rewrites history)
+
+Notes:
+    - Only works with branches/commits in existing worktrees
+    - File will be removed from current worktree
+    - For -b: file added to unstaged area
+    - For -c: file added to the specified commit using amend/rebase (rewrites history!)
+EOF
+}
+
+# Parse arguments
+file=""
+branch=""
+commit=""
+
+while getopts "f:b:c:h" opt; do
+    case $opt in
+        f) file="$OPTARG" ;;
+        b) branch="$OPTARG" ;;
+        c) commit="$OPTARG" ;;
+        h) show_help; exit 0 ;;
+        *) show_help; exit 1 ;;
+    esac
+done
+
+# Validate required arguments
+if [[ -z "$file" ]]; then
+    echo "Error: -f <file> is required"
+    show_help
+    exit 1
+fi
+
+if [[ -z "$branch" && -z "$commit" ]]; then
+    echo "Error: Either -b <branch> or -c <commit> is required"
+    show_help
+    exit 1
+fi
+
+if [[ -n "$branch" && -n "$commit" ]]; then
+    echo "Error: Cannot specify both -b and -c"
+    show_help
+    exit 1
+fi
+
+# Verify file exists
+if [[ ! -f "$file" ]]; then
+    echo "Error: File '$file' does not exist"
+    exit 1
+fi
+
+# Get absolute path of file
+file_abs=$(realpath "$file")
+file_name=$(basename "$file")
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Get worktree information
+get_worktree_for_branch() {
+    local target_branch="$1"
+    git worktree list --porcelain | awk -v branch="$target_branch" '
+        /^worktree / { path = substr($0, 10) }
+        /^branch / {
+            if (substr($0, 8) == "refs/heads/" branch) {
+                print path
+                exit
+            }
+        }
+    '
+}
+
+get_worktree_for_commit() {
+    local target_commit="$1"
+
+    # Verify commit exists
+    if ! git rev-parse --verify "$target_commit" >/dev/null 2>&1; then
+        echo "Error: Commit '$target_commit' does not exist"
+        exit 1
+    fi
+
+    # Find which branch contains this commit
+    local branches=$(git branch --contains "$target_commit" --format='%(refname:short)')
+
+    if [[ -z "$branches" ]]; then
+        echo "Error: No branch contains commit '$target_commit'"
+        exit 1
+    fi
+
+    # Collect all worktrees that contain this commit
+    local -a worktrees_found=()
+    local -a branches_found=()
+
+    while IFS= read -r br; do
+        local wt=$(get_worktree_for_branch "$br")
+        if [[ -n "$wt" ]]; then
+            worktrees_found+=("$wt")
+            branches_found+=("$br")
+        fi
+    done <<< "$branches"
+
+    if [[ ${#worktrees_found[@]} -eq 0 ]]; then
+        echo ""
+        return 1
+    fi
+
+    if [[ ${#worktrees_found[@]} -eq 1 ]]; then
+        echo "${worktrees_found[0]}|${branches_found[0]}"
+        return 0
+    fi
+
+    # Multiple worktrees contain this commit - let user choose
+    echo "Multiple worktrees contain commit $target_commit:" >&2
+    echo "" >&2
+    for i in "${!worktrees_found[@]}"; do
+        echo "  $((i+1))) ${branches_found[$i]} (${worktrees_found[$i]})" >&2
+    done
+    echo "" >&2
+    read -p "Select worktree (1-${#worktrees_found[@]}): " choice >&2
+
+    if [[ ! "$choice" =~ ^[0-9]+$ ]] || [[ "$choice" -lt 1 ]] || [[ "$choice" -gt ${#worktrees_found[@]} ]]; then
+        echo "Error: Invalid selection" >&2
+        exit 1
+    fi
+
+    idx=$((choice-1))
+    echo "${worktrees_found[$idx]}|${branches_found[$idx]}"
+    return 0
+}
+
+# Determine target worktree
+if [[ -n "$branch" ]]; then
+    target_worktree=$(get_worktree_for_branch "$branch")
+    target_branch="$branch"
+    mode="unstaged"
+
+    if [[ -z "$target_worktree" ]]; then
+        echo "Error: No worktree found for branch '$branch'"
+        echo ""
+        echo "Available worktrees:"
+        git worktree list
+        exit 1
+    fi
+else
+    result=$(get_worktree_for_commit "$commit")
+
+    if [[ -z "$result" ]]; then
+        echo "Error: No worktree found for any branch containing commit '$commit'"
+        echo ""
+        echo "Available worktrees:"
+        git worktree list
+        exit 1
+    fi
+
+    target_worktree="${result%%|*}"
+    target_branch="${result##*|}"
+    mode="commit"
+fi
+
+# Calculate relative path within the repo
+repo_root=$(git rev-parse --show-toplevel)
+if [[ "$file_abs" == "$repo_root"* ]]; then
+    rel_path="${file_abs#$repo_root/}"
+else
+    echo "Error: File '$file' is not in the git repository"
+    exit 1
+fi
+
+target_file="$target_worktree/$rel_path"
+
+echo "Moving '$file' to $target_branch worktree"
+echo "  From: $current_branch"
+echo "  To: $target_branch"
+echo "  Mode: $mode"
+echo ""
+
+# Create target directory if needed
+target_dir=$(dirname "$target_file")
+mkdir -p "$target_dir"
+
+# Copy file to target worktree
+cp "$file" "$target_file"
+
+# Remove from current worktree
+rm "$file"
+git add "$file"
+
+# Handle target worktree
+cd "$target_worktree"
+
+if [[ "$mode" == "commit" ]]; then
+    # Add file to the specified commit
+    git add "$rel_path"
+
+    # Check if the target commit is the current HEAD
+    current_head=$(git rev-parse HEAD)
+    target_commit_full=$(git rev-parse "$commit")
+
+    if [[ "$current_head" == "$target_commit_full" ]]; then
+        # Target commit is HEAD, just amend it
+        git commit --amend --no-edit
+        echo "✓ File added to commit $commit (amended)"
+    else
+        # Need to rebase to insert the file into the commit
+        echo "Rebasing to add file to commit $commit..."
+        echo "WARNING: This will rewrite history!"
+
+        # Stash the staged file
+        git reset HEAD "$rel_path"
+        git stash push -m "git-rub temp stash" "$rel_path"
+
+        # Use an environment variable to mark which commit to edit
+        export GIT_SEQUENCE_EDITOR="sed -i.bak 's/^pick ${commit:0:7}/edit ${commit:0:7}/'"
+
+        # Start interactive rebase
+        if ! git rebase -i "${commit}^" 2>/dev/null; then
+            echo "Error: Could not start rebase"
+            git rebase --abort 2>/dev/null
+            git stash pop 2>/dev/null
+            exit 1
+        fi
+
+        # Pop the stashed file and amend the commit
+        git stash pop
+        git add "$rel_path"
+        git commit --amend --no-edit
+
+        # Continue the rebase
+        if ! git rebase --continue; then
+            echo "Error: Rebase failed. You may need to resolve conflicts."
+            echo "After resolving, run: git rebase --continue"
+            exit 1
+        fi
+
+        # Clean up the backup file created by sed
+        rm -f .git/rebase-merge/git-rebase-todo.bak 2>/dev/null
+
+        echo "✓ File added to commit $commit (via rebase)"
+    fi
+else
+    # Just add to target worktree (unstaged)
+    echo "✓ File added to $target_branch worktree (unstaged)"
+fi
+
+echo ""
+echo "File successfully moved!"
