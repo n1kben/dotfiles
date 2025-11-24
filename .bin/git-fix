@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+conflicts=$(git grep -n "<<<<<<<")
+
+if [ -z "$conflicts" ]; then
+  echo "No conflicts found."
+  exit 0
+fi
+
+nvim -q <(echo "$conflicts") -c "copen"

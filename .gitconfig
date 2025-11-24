@@ -6,9 +6,6 @@
   pop = !git stash pop
   amend = !git commit --amend --no-edit
   squash = !git rebase -i master
-  conflicts = !git diff --name-only --diff-filter=U | uniq
-  is-rebasing = !if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then echo rebase; fi
-  is-merging = !if [ -f .git/MERGE_HEAD ]; then echo merge; fi
 [include]
   path = ~/.gitconfig-override
 [push]

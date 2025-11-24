@@ -57,21 +57,18 @@ alias gsl="fzg stash"
 
 alias g="git status"
 alias gs="git status"
-alias ga="git add"
-alias gap="git add --all --intent-to-add && git add --patch"
+alias gaa="git add --all"
+alias gai="git add --intent-to-add"
+alias gap="git add --patch"
 alias gd="git diff"
 alias gc="git commit -v"
-alias gco="git checkout"
 alias gca="git add --all && git commit -v"
-alias gcaa="git add --all && git commit -v --amend"
 alias grm="git rm"
 alias gp="git push origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpf="git push origin \$(git rev-parse --abbrev-ref HEAD) --force-with-lease"
 alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gcb="git checkout \$(gb)"
 alias gcf="git checkout \$(gf)"
-alias gst="git stash --include-untracked"
-alias ge="$EDITOR \$(gf)"
 alias gk="git rebase --continue || git merge --continue"
 
 
@@ -79,6 +76,13 @@ alias gk="git rebase --continue || git merge --continue"
 # ----------------------------
 source <(fzf --zsh)
 export FZF_DEFAULT_OPTS="--color 16 --reverse"
+
+# alt+c to cd
+# ctrl+t to paste file
+# ctrl+r for history
+
+source ~/.fzf-git.sh
+# ctrl+g ?
 
 
 # BAT
@@ -172,6 +176,7 @@ v() {
 # ----------------------------
 export NODE_ENV="development"
 
+
 # Tmux
 # ----------------------------
 
@@ -183,36 +188,6 @@ fztmux() {
 }
 zle -N fztmux
 bindkey '^P' fztmux
-
-
-# Fuzzy cd
-# ----------------------------
-fzcd() {
-  local dir
-  dir=$(fd -t d -H . | fzf ) || return
-  BUFFER="cd $dir"
-  CURSOR=$#BUFFER
-  zle accept-line
-}
-zle -N fzcd
-bindkey '^F' fzcd
-
-
-# Command
-# ----------------------------
-alias k="fzc edit"
-alias ka="fzc add"
-fzcmd() { 
-  local cmd="$(fzc)"
-  # Put the command in the buffer
-  BUFFER="$cmd"
-  # Move cursor to end of line
-  CURSOR=$#BUFFER
-  # Accept and execute - this must be the LAST zle command
-  zle accept-line
-}
-zle -N fzcmd
-bindkey '^K' fzcmd
 
 
 # Hook System
@@ -240,50 +215,6 @@ _update_prompt() {
 }
 
 add_precmd_hook "_update_prompt"
-
-
-# Title
-# ----------------------------
-_update_title() {
-  # Skip if user has manually set title
-  [[ -n "$MANUAL_TITLE" ]] && return
-  
-  # Check for .title file in current directory
-  if [[ -f ".title" ]]; then
-    local title_content
-    title_content=$(cat .title 2>/dev/null | head -1)
-    if [[ -n "$title_content" ]]; then
-      echo -ne "\e]1;$title_content\a"
-      return
-    fi
-  fi
-  
-  local git_root git_branch
-  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-  git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-
-  if [[ -n "$git_root" && -n "$git_branch" ]]; then
-    # Show repo name and branch
-    echo -ne "\e]1;${git_root##*/}:${git_branch}\a"
-  else
-    # Fallback: just show current dir name
-    echo -ne "\e]1;${PWD##*/}\a"
-  fi
-}
-
-title() {
-  if [[ -z "$1" ]]; then
-    # Clear manual title and reset to auto
-    unset MANUAL_TITLE
-    _update_title
-  else
-    # Set manual title
-    export MANUAL_TITLE="$1"
-    echo -ne "\e]1;$1\a"
-  fi
-}
-
-add_precmd_hook "_update_title"
 
 
 # Precmd Hook Runner

@@ -1,0 +1,103 @@
+#!/bin/bash
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "Error: fzf is not installed. Please install fzf to use git-recent." >&2
+  exit 1
+fi
+[ "$(git rev-parse --is-inside-work-tree)" = "true" ] || exit
+
+if [[ $1 == "--help" ]]; then
+  echo "git-recent: Browse and checkout recently used Git branches."
+  echo
+  echo "Keybindings:"
+  echo "  Enter:      Checkout the selected branch"
+  echo "  Ctrl-O:     Show the diff of the selected branch against the main/master branch"
+  echo "  Ctrl-C:     Exit"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------------------
+
+# The HEAD of the primary branch (eg main or master or w/e), for diffing.
+# TODO: some branch mgmt approaches don't work well with this. And may prefer `git log --pretty=format:%H --merges -n 1`.  See https://github.com/paulirish/git-recent/issues/28
+diff_base=$(cat $(git rev-parse --show-cdup).git/refs/remotes/origin/HEAD | awk '{print $2}')
+
+# Extract branch name (without any trailing text, like the Chromium link)
+define_branchname="branchname=\\\$(echo {1} | cut -d' ' -f1)"
+
+# Colorized hash, author, date, then commit subject followed by commit message body (wrapped and indented).
+commits_format="%C(red bold)%h %C(bold blue)%an %C(bold green)%ad %Creset%s%w(0,4,4)%+b%w(0,0,0)"
+uniqcommits_cmd="sh -c \"$define_branchname; git log --date=human --color=always --format='$commits_format' --no-merges $diff_base..\\\$branchname\""
+
+# Progressive enhancement if you have delta or diff-so-fancy
+diff_pager_cmd=$(command -v delta || command -v diff-so-fancy)
+pipe_to_pager=${diff_pager_cmd:+" | $diff_pager_cmd"}
+diffbranch_cmd="sh -c \"$define_branchname; git diff --color=always $diff_base...\\\$branchname $pipe_to_pager\""
+
+# Copy to clipboard, variants for mac/linux
+copy_cmd="echo 'Could not copy {} to clipboard.'"
+if command -v pbcopy >/dev/null; then
+  copy_cmd="printf '%s' {} | pbcopy"
+elif command -v wl-copy >/dev/null; then
+  copy_cmd="printf '%s' {} | wl-copy"
+elif command -v xclip >/dev/null; then
+  copy_cmd="printf '%s' {} | xclip -selection clipboard"
+elif command -v xsel >/dev/null; then
+  copy_cmd="printf '%s' {} | xsel --clipboard"
+fi
+
+YELLOW='\033[0;33m'
+DIM='\033[2m'
+NC='\033[0m' # No Color
+
+# if show_cl passed then also run git cl status. (chromium repos)
+[[ $1 == "--cl" || $1 == "-cl" ]] && show_cl=true || show_cl=false
+
+# if extra arg passed (eg `git recent remotename`), then list those remote branches, rather than local ones
+[[ -n $1 && $show_cl != true ]] && heads="refs/remotes/$1" || heads="refs/heads"
+
+# fzf git inspiration:
+# - https://github.com/junegunn/fzf/wiki/Examples#git
+# - https://github.com/junegunn/fzf/wiki/Examples-(fish)#git
+# - https://github.com/junegunn/fzf-git.sh (intense.)
+
+# If there's a GIT_RECENT_QUERY environment variable, use it for non-interactive filtering. (Primarily added for testing: https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/g/git-recent.rb#L41-L46)
+filterarg=${GIT_RECENT_QUERY:+"--filter=$GIT_RECENT_QUERY"}
+
+# Chromium hackers may want reference to their relevant CL.
+CL_STATUS=$([ "$show_cl" = true ] && git cl status --fast --no-branch-color | grep 'https://' | sed 's| (.*||')
+
+_browse_branches() {
+  git for-each-ref --sort=-authordate "$heads" --format="%(refname:short)" |
+    while read -r branch_name; do
+      if [ "$show_cl" != true ]; then
+        printf "$YELLOW%s$NC\n" "$branch_name"
+        continue
+      fi
+      review_url=$(echo "$CL_STATUS" | grep -E "\b${branch_name} :" | grep -o -E 'https://.*' | sed 's|https://||')
+      # Using fancy integrated hyperlinks: https://iterm2.com/feature-reporting/Hyperlinks_in_Terminal_Emulators.html
+      # TODO: maybe get rid of the crrev.com/c/ text as the link?
+      # TODO: use `git config branch.$(git rev-parse --abbrev-ref HEAD).gerritissue` and gerritserver to avoid using `git cl status`
+      printf "$YELLOW%s $DIM\033]8;;%s\a%s\033]8;;\a$NC\n" "$branch_name" "https://$review_url" "$review_url"
+    done |
+    fzf \
+      $filterarg --ansi -- --layout=reverse --multi --height=90% --min-height=20 \
+      --border-label-pos=2 --border-label '🌲 Branches' --border \
+      --no-hscroll --no-multi \
+      --preview-window='right,70%,border-left,border-rounded' --preview="$uniqcommits_cmd" --preview-label="Commits unique to branch" \
+      --header $'ENTER (checkout)\nCTRL-O (show branch diff)\nCTRL-Y (copy name to clipboard)' \
+      --bind 'preview-scroll-up:preview-up+preview-up+preview-up' \
+      --bind 'preview-scroll-down:preview-down+preview-down+preview-down' \
+      --bind "ctrl-y:execute-silent($copy_cmd)" \
+      --bind "ctrl-o:preview:$diffbranch_cmd"
+}
+output="$(_browse_branches)"
+line_count=$(printf "%s" "$output" | wc -l)
+
+if [[ -n $output ]] && ((line_count == 0)); then
+  chosen_branch=$(echo "$output" | cut -d' ' -f1)
+  echo git checkout "$chosen_branch"
+  git checkout "$chosen_branch"
+else
+  echo "$output"
+fi
