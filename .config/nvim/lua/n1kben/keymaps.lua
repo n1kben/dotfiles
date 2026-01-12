@@ -105,8 +105,10 @@ end
 vim.keymap.set("n", "<C-CR>", toggle_zoom, { desc = "Toggle maximize current split" })
 
 -- LSP
-vim.keymap.set("n", "gk", vim.lsp.buf.hover, { desc = "LSP: Hover" })
-vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "LSP: Go to definition" })
+vim.keymap.set("n", "gk", function()
+  vim.lsp.buf.hover { border = "rounded" }
+end, { desc = "LSP: Hover" })
+vim.keymap.set("n", "gd", "<C-]>", { desc = "Go to definition", remap = true })
 vim.keymap.set("n", "gD", vim.lsp.buf.declaration, { desc = "LSP: Go to declaration" })
 vim.keymap.set("n", "<leader>r", vim.lsp.buf.references, { desc = "LSP: References" })
 vim.keymap.set("n", "gra", vim.lsp.buf.code_action, { desc = "LSP: Code action" })

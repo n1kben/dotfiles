@@ -67,7 +67,7 @@ alias grm="git rm"
 alias gp="git push origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpf="git push origin \$(git rev-parse --abbrev-ref HEAD) --force-with-lease"
 alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
-alias gcb="git checkout \$(gb)"
+alias gcb="git recent"
 alias gcf="git checkout \$(gf)"
 alias gk="git rebase --continue || git merge --continue"
 
