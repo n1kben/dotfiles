@@ -1,0 +1,34 @@
+#!/bin/bash
+
+EDITOR_CMD="${EDITOR:-vim}"
+
+# Get all conflicted files
+conflicted_files=$(git diff --name-only --diff-filter=U)
+
+if [ -z "$conflicted_files" ]; then
+  echo "No conflicts to resolve."
+  exit 0
+fi
+
+# Open them in your editor
+$EDITOR_CMD $conflicted_files
+
+# Stage resolved files (no conflict markers)
+for f in $conflicted_files; do
+  if ! grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$f"; then
+    git add "$f"
+    echo "Staged $f"
+  fi
+done
+
+# Check if any conflicts remain
+remaining=$(git diff --name-only --diff-filter=U)
+
+if [ -z "$remaining" ]; then
+  echo "All conflicts resolved. Continuing rebase..."
+  git rebase --continue
+else
+  echo "Some conflicts remain:"
+  echo "$remaining"
+  echo "Reopen your editor to continue resolving."
+fi

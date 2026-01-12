@@ -25,7 +25,7 @@ return {
 
       configs.setup({
         auto_install = true,
-        ensure_installed = { "lua", "rescript", "javascript", "json", "html", "typescript" },
+        ensure_installed = { "lua", "rescript", "javascript", "json", "html", "typescript", "graphql" },
         sync_install = false,
         highlight = { enable = true },
         indent = { enable = true },
