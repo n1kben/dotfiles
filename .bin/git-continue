@@ -1,9 +1,0 @@
-#!/bin/bash
-
-if [ -d .git/rebase-apply ] || [ -d .git/rebase-merge ]; then
-  git rebase --continue
-elif [ -f .git/MERGE_HEAD ]; then
-  git merge --continue
-else
-  echo "Nothing to continue."
-fi
