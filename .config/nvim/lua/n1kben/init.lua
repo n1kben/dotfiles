@@ -9,19 +9,11 @@ require("n1kben.lazy")
 require("n1kben.options")
 require("n1kben.lsp")
 
--- GitCast is now loaded as a plugin via lazy.nvim (see plugins/gitcast.lua)
-
 -- Last place (restore last cursor position)
 require("n1kben.lastplace").setup()
 
--- Regex tester
-require("n1kben.regex-popup").setup()
-
 -- Todo
 require("n1kben.todo").setup({})
-
--- Highlight utilities
-require("n1kben.highlights").setup()
 
 -- Alternate
 require("n1kben.alternate").setup({

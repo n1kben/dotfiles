@@ -3,9 +3,13 @@ return {
   lazy = false,
   opts = {
     ensure_installed = {
-      "rescript-language-server",
+      "marksman",
       "lua-language-server",
+      "rescript-language-server",
+      "prettier",
       "typescript-language-server",
+      "bash-language-server",
+      "shfmt",
     },
   },
 }

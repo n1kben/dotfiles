@@ -67,9 +67,8 @@ alias grm="git rm"
 alias gp="git push origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpf="git push origin \$(git rev-parse --abbrev-ref HEAD) --force-with-lease"
 alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
-alias gcb="git recent"
+alias gcb="git checkout \$(gb)"
 alias gcf="git checkout \$(gf)"
-alias gk="git rebase --continue || git merge --continue"
 
 
 # FZF
@@ -190,23 +189,16 @@ zle -N fztmux
 bindkey '^P' fztmux
 
 
-# Hook System
-# ----------------------------
-PRECMD_HOOKS=()
-
-add_precmd_hook() {
-  PRECMD_HOOKS+=("$1")
-}
-
 # Prompt
 # ----------------------------
-# Enable vcs_info for git branch display
-autoload -Uz vcs_info
+
+autoload -Uz vcs_info add-zsh-hook
+
 zstyle ':vcs_info:git:*' formats ' (%b)'
 zstyle ':vcs_info:*' enable git
 
-# Set prompts
 setopt PROMPT_SUBST
+
 PROMPT='%F{blue}%1~%f%F{green}${vcs_info_msg_0_}%f λ '
 RPROMPT='%F{black}%~%f'
 
@@ -214,16 +206,18 @@ _update_prompt() {
   vcs_info
 }
 
-add_precmd_hook "_update_prompt"
+add-zsh-hook precmd _update_prompt
 
 
-# Precmd Hook Runner
+# Title
 # ----------------------------
-precmd() {
-  for hook in "${PRECMD_HOOKS[@]}"; do
-    $hook
-  done
+
+_update_title() {
+  local branch="${vcs_info_msg_0_}"
+  print -Pn "\e]0;%1~${branch}\a"
 }
+
+# add-zsh-hook precmd _update_title
 
 
 # Syntax highlighting (must the last line)

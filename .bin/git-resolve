@@ -1,17 +1,23 @@
 #!/bin/bash
 
-EDITOR_CMD="${EDITOR:-vim}"
-
 # Get all conflicted files
 conflicted_files=$(git diff --name-only --diff-filter=U)
 
 if [ -z "$conflicted_files" ]; then
   echo "No conflicts to resolve."
+  read -p "Continue rebase? (Y/n): " -r
+  echo
+  if [[ $REPLY =~ ^[Nn]$ ]]; then
+    echo "Rebase not continued. Run 'git rebase --continue' manually when ready."
+  else
+    echo "Continuing rebase..."
+    GIT_EDITOR=true git rebase --continue
+  fi
   exit 0
 fi
 
 # Open them in your editor
-$EDITOR_CMD $conflicted_files
+nvim -c "caddexpr systemlist('git diff --name-only --diff-filter=U | xargs grep -Hn \"<<<<<<<\"')" -c "copen"
 
 # Stage resolved files (no conflict markers)
 for f in $conflicted_files; do
@@ -25,8 +31,15 @@ done
 remaining=$(git diff --name-only --diff-filter=U)
 
 if [ -z "$remaining" ]; then
-  echo "All conflicts resolved. Continuing rebase..."
-  git rebase --continue
+  echo "All conflicts resolved."
+  read -p "Continue rebase? (Y/n): " -r
+  echo
+  if [[ $REPLY =~ ^[Nn]$ ]]; then
+    echo "Rebase not continued. Run 'git rebase --continue' manually when ready."
+  else
+    echo "Continuing rebase..."
+    GIT_EDITOR=true git rebase --continue
+  fi
 else
   echo "Some conflicts remain:"
   echo "$remaining"

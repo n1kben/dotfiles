@@ -6,6 +6,7 @@
   pop = !git stash pop
   amend = !git commit --amend --no-edit
   squash = !git rebase -i master
+  resolve = !git-resolve
 [include]
   path = ~/.gitconfig-override
 [push]
