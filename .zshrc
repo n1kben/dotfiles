@@ -111,6 +111,20 @@ cd() {
   fi
 }
 
+export CDPATH=.:~/.marks
+
+mkdir -p ~/.marks
+
+mark() {
+  [ -z "$1" ] && { echo "usage: mark <name>"; return 1; }
+  ln -sn "$(pwd)" ~/.marks/"$1"
+}
+marks() {
+  local dest
+  dest=$(ls ~/.marks | fzf) || return
+  cd ~/.marks/"$dest"
+}
+
 alias -- -='cd -'
 alias ..="cd ../"
 alias ...="cd ../../"
