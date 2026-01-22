@@ -6,6 +6,8 @@ export MANPAGER="nvim +Man!"
 export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 
+export DOTFILES="$HOME/.files"
+
 export VOLTA_HOME="$HOME/.volta"
 export PATH="$VOLTA_HOME/bin:$PATH"
 

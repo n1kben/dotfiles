@@ -5,7 +5,7 @@ brew() {
   command brew "$@"
 
   # If it's an install command, dump Brewfile after
-  if [[ "$1" == "install" || "$1" == "uninstall" || "$1" == "upgrade" ]]; then
+  if [[ "$1" == "install" || "$1" == "uninstall" || "$1" == "upgrade" || "$1" == "tap" || "$1" == "untap" ]]; then
     command brew bundle dump --force --file="$DOTFILES/Brewfile"
   fi
 }
@@ -82,6 +82,9 @@ export FZF_DEFAULT_OPTS="--color 16 --reverse"
 
 source ~/.fzf-git.sh
 # ctrl+g ?
+
+source ~/.files/.fzf-brew.sh
+# ctrl+b ?
 
 
 # BAT
