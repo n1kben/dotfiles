@@ -28,6 +28,7 @@ alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gcb="git checkout \$(fzg branch)"
 alias grm="git fetch origin master && git rebase origin/master"
 alias g-="git checkout -"
+alias g.="git checkout ."
 
 
 # FZF
