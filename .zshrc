@@ -13,48 +13,7 @@ brew() {
 
 # Git
 # ----------------------------
-export GIT_MERGE_AUTOEDIT=no
-
-git() {
-  local cmd="$1"
-  local fzf_eligible_commands=("add" "rm" "checkout" "diff")
-
-  # Commands that don't use fzf - run git normally
-  if [[ ! " ${fzf_eligible_commands[*]} " =~ " $cmd " ]]; then
-    command git "$@"
-    return
-  fi
-
-  # Check if we should skip fzf (files already specified or "all files" flags)
-  local arg
-  for arg in "${@:2}"; do
-    case "$arg" in
-      --all|-A|-|.|*\**) # "All files" patterns
-        command git "$@"
-        return
-        ;;
-      -*) # Skip flags
-        continue
-        ;;
-      *) # Found a file argument
-        command git "$@"
-        return
-        ;;
-    esac
-  done
-
-  # No files specified - use fzf for file selection
-  local selected_files
-  selected_files=$(fzg files)
-  [[ -z "$selected_files" ]] && return 1  # User cancelled
-  command git "$@" $selected_files
-}
-
-alias gf="fzg files"
-alias gb="fzg branch"
 alias gl="fzg history"
-alias gsl="fzg stash"
-
 alias g="git status"
 alias gs="git status"
 alias gaa="git add --all"
@@ -63,12 +22,12 @@ alias gap="git add --patch"
 alias gd="git diff"
 alias gc="git commit -v"
 alias gca="git add --all && git commit -v"
-alias grm="git rm"
 alias gp="git push origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpf="git push origin \$(git rev-parse --abbrev-ref HEAD) --force-with-lease"
 alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
-alias gcb="git checkout \$(gb)"
-alias gcf="git checkout \$(gf)"
+alias gcb="git checkout \$(fzg branch)"
+alias grm="git fetch origin master && git rebase origin/master"
+alias g-="git checkout -"
 
 
 # FZF
@@ -94,11 +53,9 @@ alias cat="bat -p --pager=never"
 
 
 
-# System
-# ----------------------------
-export CLICOLOR=1
-
 # cd
+# ----------------------------
+
 cd() {
   # If no arguments, use fzf to select directory
   if [[ $# -eq 0 ]]; then
@@ -110,6 +67,15 @@ cd() {
     builtin cd "$@"
   fi
 }
+
+alias -- -='cd -'
+alias ..="cd ../"
+alias ...="cd ../../"
+alias ....="cd ../../../"
+
+
+# Marks
+# ----------------------------
 
 export CDPATH=.:~/.marks
 
@@ -125,34 +91,25 @@ marks() {
   cd ~/.marks/"$dest"
 }
 
-alias -- -='cd -'
-alias ..="cd ../"
-alias ...="cd ../../"
-alias ....="cd ../../../"
 
 # ls
+# ----------------------------
+
 alias l="ls -l"
 alias ll="ls -l"
 alias la="ls -la"
 
+
 # mkdir
+# ----------------------------
+
 alias mkdir="mkdir -p"
 mkcd() { mkdir -p "$1" && cd "$1" }
 
-# rm
-rm() {
-  # If no arguments, use fzf to select files
-  if [[ $# -eq 0 ]]; then
-    local selected_files
-    selected_files=$(fzg files)
-    [[ -z "$selected_files" ]] && return 1  # User cancelled
-    command rm $selected_files
-  else
-    command rm "$@"
-  fi
-}
 
-# shortcuts
+# Shortcuts
+# ----------------------------
+
 alias c="clear"
 alias r="source ~/.zshenv && source ~/.zprofile && source ~/.zshrc"
 
@@ -188,11 +145,6 @@ v() {
 }
 
 
-# Node
-# ----------------------------
-export NODE_ENV="development"
-
-
 # Tmux
 # ----------------------------
 
@@ -226,25 +178,16 @@ _update_prompt() {
 add-zsh-hook precmd _update_prompt
 
 
-# Title
-# ----------------------------
-
-_update_title() {
-  local branch="${vcs_info_msg_0_}"
-  print -Pn "\e]0;%1~${branch}\a"
-}
-
-# add-zsh-hook precmd _update_title
-
-
 # Syntax highlighting (must the last line)
 # ----------------------------
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+[[ -f $HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
+  source $HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 
 # Autosuggestions
 # ----------------------------
-source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -f $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
+  source $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 bindkey '^I' complete-word # Tab for next word
 bindkey '^[[Z' autosuggest-accept # Shift+Tab for full suggestion
 
