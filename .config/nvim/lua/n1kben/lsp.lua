@@ -12,3 +12,12 @@ end
 if #lsps_to_enable > 0 then
   vim.lsp.enable(lsps_to_enable)
 end
+
+vim.api.nvim_create_user_command("LspRestart", function()
+  for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+    client:stop()
+  end
+  vim.defer_fn(function()
+    vim.cmd("edit")
+  end, 100)
+end, { desc = "Restart LSP clients for current buffer" })
