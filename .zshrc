@@ -30,6 +30,7 @@ alias gcb="git checkout \$(fzg branch)"
 alias grm="git fetch origin master && git rebase origin/master"
 alias g-="git checkout -"
 alias g.="git checkout ."
+alias s='git add --all && git commit -m "Snapshot: $(date +"%Y-%m-%d %H:%M:%S")"'
 
 
 # FZF
