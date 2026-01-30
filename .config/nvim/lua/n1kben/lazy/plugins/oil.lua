@@ -95,6 +95,11 @@ return {
         ["_"] = "actions.open_cwd",
         ["~"] = "actions.cd",
         ["?"] = "actions.preview",
+        ["gy"] = {
+          "actions.yank_entry",
+          opts = { modify = ":p" },
+          desc = "Yank entry path (absolute)",
+        },
       },
     }
     oil.setup(opts)
