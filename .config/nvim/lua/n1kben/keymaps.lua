@@ -125,7 +125,5 @@ end, { desc = "Show regex popup with highlights" })
 -- Git dashboard (replaces old git-status) - now uses plugin command
 vim.keymap.set("n", "<leader>g", "<cmd>GitCast<cr>", { desc = "Open git dashboard" })
 
--- Reload config
-vim.keymap.set("n", "R", function()
-  dofile(vim.env.MYVIMRC)
-end, { desc = "Reload neovim config" })
+-- Reload current file
+vim.keymap.set("n", "R", "<cmd>edit<cr>", { desc = "Reload current file" })
