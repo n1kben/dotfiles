@@ -27,6 +27,7 @@ alias gpf="git push origin \$(git rev-parse --abbrev-ref HEAD) --force-with-leas
 alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpm="git pull --merge origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gcb="git checkout \$(fzg branch)"
+alias b='git checkout $(basename "$PWD")'
 alias grm="git fetch origin master && git rebase origin/master"
 alias g-="git checkout -"
 alias g.="git checkout ."
