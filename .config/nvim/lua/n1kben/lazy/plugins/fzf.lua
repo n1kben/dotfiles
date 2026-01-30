@@ -91,6 +91,25 @@ return {
       { desc = "FZF: Undo tree" },
     },
     {
+      "<leader>d",
+      mode = "n",
+      function()
+        require("fzf-lua").files({
+          prompt = "Directories> ",
+          fd_opts = "--color=never --type d --hidden --exclude .git --exclude node_modules --max-depth 10",
+          previewer = false,
+          actions = {
+            ["default"] = function(selected)
+              if not selected or #selected == 0 then return end
+              local dir = selected[1]:gsub("^%s*(.-)%s*$", "%1")  -- trim whitespace
+              require("oil").open(dir)
+            end,
+          },
+        })
+      end,
+      { desc = "FZF: Directories (open in Oil)" },
+    },
+    {
       "<leader>?",
       mode = "n",
       function()
