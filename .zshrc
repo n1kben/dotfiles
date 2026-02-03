@@ -46,7 +46,7 @@ export FZF_DEFAULT_OPTS="--color 16 --reverse"
 source ~/.fzf-git.sh
 # ctrl+g ?
 
-source ~/.files/.fzf-brew.sh
+source ~/.fzf-brew.sh
 # ctrl+b ?
 
 
