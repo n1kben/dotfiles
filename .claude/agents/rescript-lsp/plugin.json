@@ -1,0 +1,19 @@
+{
+  "name": "rescript-lsp",
+  "displayName": "ReScript LSP",
+  "description": "ReScript language server integration for Claude Code - provides diagnostics, go to definition, hover, and more",
+  "version": "1.0.0",
+  "lspServers": {
+    "rescript": {
+      "command": "rescript-language-server",
+      "args": ["--stdio"],
+      "extensionToLanguage": {
+        ".res": "rescript",
+        ".resi": "rescript"
+      },
+      "startupTimeout": 10000,
+      "restartOnCrash": true,
+      "maxRestarts": 3
+    }
+  }
+}
