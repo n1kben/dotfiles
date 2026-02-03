@@ -2,6 +2,9 @@ vim.opt_local.wrap = true
 vim.opt_local.linebreak = true
 vim.opt_local.conceallevel = 0
 vim.opt_local.concealcursor = "ncv"
+vim.opt_local.expandtab = true
+vim.opt_local.softtabstop = 2
+vim.opt_local.shiftwidth = 2
 
 vim.g["surround_" .. string.byte("*")] = "**\r**"
 vim.g["surround_" .. string.byte("_")] = "_"

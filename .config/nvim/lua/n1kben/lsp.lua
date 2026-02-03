@@ -21,3 +21,55 @@ vim.api.nvim_create_user_command("LspRestart", function()
     vim.cmd("edit")
   end, 100)
 end, { desc = "Restart LSP clients for current buffer" })
+
+-- LSP keybindings that are buffer-local
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = vim.api.nvim_create_augroup('lsp-attach-keybinds', { clear = true }),
+  callback = function(ev)
+    -- Copy type from LSP hover to clipboard
+    local function copy_type()
+      local params = vim.lsp.util.make_position_params()
+      vim.lsp.buf_request(0, 'textDocument/hover', params, function(err, result)
+        if err or not result or not result.contents then
+          vim.notify('No type information available', vim.log.levels.WARN)
+          return
+        end
+
+        -- Extract content from hover result
+        local contents = result.contents
+        local text
+        if type(contents) == 'table' and contents.value then
+          text = contents.value
+        elseif type(contents) == 'string' then
+          text = contents
+        elseif type(contents) == 'table' and contents[1] then
+          -- Take first item from array
+          local item = contents[1]
+          text = type(item) == 'string' and item or item.value
+        end
+
+        if not text then
+          vim.notify('No type information available', vim.log.levels.WARN)
+          return
+        end
+
+        -- Extract type from markdown code fence if present
+        -- Pattern: ```language\ncode\n```
+        local type_sig = text:match('```%w*\n(.-)```')
+        if type_sig then
+          text = vim.trim(type_sig)
+        else
+          -- Try to extract just first line as fallback
+          text = text:match('^([^\n]+)') or text
+          text = vim.trim(text)
+        end
+
+        -- Copy to system clipboard
+        vim.fn.setreg('+', text)
+        vim.notify('Copied: ' .. text:sub(1, 50) .. (text:len() > 50 and '...' or ''), vim.log.levels.INFO)
+      end)
+    end
+
+    vim.keymap.set('n', 'yK', copy_type, { buffer = ev.buf, desc = 'Copy type to clipboard' })
+  end,
+})
