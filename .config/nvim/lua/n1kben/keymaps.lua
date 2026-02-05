@@ -73,12 +73,18 @@ vim.keymap.set(
 -- Diagnostics
 vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
 vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
-vim.keymap.set("n", "md", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
-vim.keymap.set("n", "Md", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+vim.keymap.set("n", "md", function()
+  vim.diagnostic.goto_next({ severity = { min = vim.diagnostic.severity.WARN } })
+end, { desc = "Next error/warning" })
+vim.keymap.set("n", "Md", function()
+  vim.diagnostic.goto_prev({ severity = { min = vim.diagnostic.severity.WARN } })
+end, { desc = "Previous error/warning" })
+vim.keymap.set("n", "mD", vim.diagnostic.goto_next, { desc = "Next diagnostic (all)" })
+vim.keymap.set("n", "MD", vim.diagnostic.goto_prev, { desc = "Previous diagnostic (all)" })
 
 -- Quickfix
-vim.keymap.set("n", "mq", "]q", { desc = "Next quickfix" })
-vim.keymap.set("n", "Mq", "[q", { desc = "Previous quickfix" })
+vim.keymap.set("n", "mq", "]q", { desc = "Next quickfix", remap = true })
+vim.keymap.set("n", "Mq", "[q", { desc = "Previous quickfix", remap = true })
 
 -- Splits
 vim.keymap.set("n", "=", "<C-w>=", { desc = "Balance splits" })
