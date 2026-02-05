@@ -4,7 +4,6 @@ local M = {}
 -- Default configuration
 M.config = {
   local_filename = "TODO.md",    -- what to look for upwards in project
-  global_filename = "~/TODO.md", -- global todo file
 }
 
 -- Utility: safely join paths
@@ -39,12 +38,6 @@ function M.open_todo_upwards()
   vim.cmd("enew")
 end
 
--- Open global TODO
-function M.open_global_todo()
-  local global_todo = vim.fn.expand(M.config.global_filename)
-  vim.cmd("edit " .. vim.fn.fnameescape(global_todo))
-end
-
 -- Insert current date
 function M.insert_date()
   vim.api.nvim_put({ os.date("%Y-%m-%d") }, "c", true, true)
@@ -56,12 +49,10 @@ function M.setup(opts)
 
   -- Commands
   vim.api.nvim_create_user_command("Todo", M.open_todo_upwards, {})
-  vim.api.nvim_create_user_command("GlobalTodo", M.open_global_todo, {})
 
   -- Keymaps
   vim.keymap.set("n", "<leader>t", M.open_todo_upwards,
     { desc = "Open local/project TODO", noremap = true, silent = true })
-  vim.keymap.set("n", "<leader>T", M.open_global_todo, { desc = "Open global TODO", noremap = true, silent = true })
   vim.keymap.set("i", "<C-t>", M.insert_date, { desc = "Insert current date", noremap = true, silent = true })
 end
 
