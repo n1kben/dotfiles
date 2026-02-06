@@ -9,6 +9,9 @@ require("n1kben.lazy")
 require("n1kben.options")
 require("n1kben.lsp")
 
+-- Statusline
+require("n1kben.statusline").setup()
+
 -- Last place (restore last cursor position)
 require("n1kben.lastplace").setup()
 
