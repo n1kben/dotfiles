@@ -1,0 +1,14 @@
+theme = light:koda-light,dark:koda-dark
+window-padding-x = 16
+window-padding-y = 16
+keybind = super+j=goto_split:down
+keybind = super+h=goto_split:left
+keybind = super+l=goto_split:right
+keybind = super+k=goto_split:up
+keybind = super+enter=toggle_split_zoom
+font-family = SauceCodePro Nerd Font Mono
+font-size = 18
+font-thicken = true
+font-thicken-strength = 0
+keybind = shift+enter=text:\x1b\r
+macos-option-as-alt = left

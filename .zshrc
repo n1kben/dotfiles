@@ -72,6 +72,7 @@ cd() {
   fi
 }
 
+alias .="cd -P ."
 alias -- -='cd -'
 alias ..="cd ../"
 alias ...="cd ../../"

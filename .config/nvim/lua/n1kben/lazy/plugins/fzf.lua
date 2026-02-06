@@ -1,6 +1,5 @@
 return {
   "ibhagwan/fzf-lua",
-  lazy = false,
   keys = {
     {
       "<leader>p",
@@ -27,6 +26,30 @@ return {
       { desc = "FZF: LSP workspace symbols" },
     },
     {
+      "<leader>r",
+      mode = "n",
+      function()
+        require("fzf-lua").lsp_references()
+      end,
+      { desc = "FZF: LSP references" },
+    },
+    {
+      "<leader>d",
+      mode = "n",
+      function()
+        require("fzf-lua").lsp_document_diagnostics()
+      end,
+      { desc = "FZF: LSP diagnostics" },
+    },
+    {
+      "<leader>D",
+      mode = "n",
+      function()
+        require("fzf-lua").lsp_workspace_diagnostics()
+      end,
+      { desc = "FZF: LSP workspace diagnostics" },
+    },
+    {
       "<leader>f",
       mode = "n",
       function()
@@ -38,9 +61,9 @@ return {
       "<leader>F",
       mode = "n",
       function()
-        require("fzf-lua").live_grep()
+        require("fzf-lua").grep_project()
       end,
-      { desc = "FZF: Live grep" },
+      { desc = "FZF: Fuzzy grep" },
     },
     {
       "<leader>N",
@@ -57,14 +80,6 @@ return {
         require("fzf-lua").grep_visual()
       end,
       { desc = "FZF: Grep visual selection" },
-    },
-    {
-      "<leader>P",
-      mode = { "n", "v" },
-      function()
-        require("fzf-lua").keymaps()
-      end,
-      { desc = "FZF: Keymaps" },
     },
     {
       "<leader><CR>",
@@ -91,26 +106,15 @@ return {
       { desc = "FZF: Undo tree" },
     },
     {
-      "<leader>d",
+      "<leader>?",
       mode = "n",
       function()
-        require("fzf-lua").files({
-          prompt = "Directories> ",
-          fd_opts = "--color=never --type d --hidden --exclude .git --exclude node_modules --max-depth 10",
-          previewer = false,
-          actions = {
-            ["default"] = function(selected)
-              if not selected or #selected == 0 then return end
-              local dir = selected[1]:gsub("^%s*(.-)%s*$", "%1")  -- trim whitespace
-              require("oil").open(dir)
-            end,
-          },
-        })
+        require("fzf-lua").builtin()
       end,
-      { desc = "FZF: Directories (open in Oil)" },
+      { desc = "FZF: Builtin" },
     },
     {
-      "<leader>?",
+      "<leader>P",
       mode = "n",
       function()
         require("fzf-lua").builtin()
