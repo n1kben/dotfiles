@@ -116,17 +116,8 @@ vim.keymap.set("n", "gk", function()
 end, { desc = "LSP: Hover" })
 vim.keymap.set("n", "gd", "<C-]>", { desc = "Go to definition", remap = true })
 vim.keymap.set("n", "gD", vim.lsp.buf.declaration, { desc = "LSP: Go to declaration" })
-vim.keymap.set("n", "<leader>r", vim.lsp.buf.references, { desc = "LSP: References" })
 vim.keymap.set("n", "gra", vim.lsp.buf.code_action, { desc = "LSP: Code action" })
 vim.keymap.set("n", "grr", vim.lsp.buf.rename, { desc = "LSP: Rename" })
-
--- Join lines
-vim.keymap.set("n", "gj", "J", { desc = "Join lines" })
-
--- Regex popup
-vim.keymap.set("n", "<leader>x", function()
-  require("n1kben.regex-popup").show_regex_popup()
-end, { desc = "Show regex popup with highlights" })
 
 -- Git dashboard (replaces old git-status) - now uses plugin command
 vim.keymap.set("n", "<leader>g", "<cmd>GitCast<cr>", { desc = "Open git dashboard" })

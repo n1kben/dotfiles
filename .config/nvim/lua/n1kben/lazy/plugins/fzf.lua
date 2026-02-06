@@ -1,5 +1,6 @@
 return {
   "ibhagwan/fzf-lua",
+  lazy = false,
   keys = {
     {
       "<leader>p",
