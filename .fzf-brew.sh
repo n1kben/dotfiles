@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 # shellcheck disable=SC2039
-[[ $0 == - ]] && return
+  [[ $0 == - ]] && return
 
 __fzf_brew_color() {
   if [[ -n $NO_COLOR ]]; then
