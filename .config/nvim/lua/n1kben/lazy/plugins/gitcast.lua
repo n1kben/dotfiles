@@ -4,7 +4,14 @@ return {
   name = "gitcast.nvim",
   cmd = "GitCast",
   keys = {
-    { "<leader>g", desc = "GitCast" },
+    {
+      "<leader>g",
+      mode = "n",
+      function()
+        require("gitcast").open()
+      end,
+      { desc = "GitCast: Start" }
+    },
   },
   config = function()
     require("gitcast").setup({
