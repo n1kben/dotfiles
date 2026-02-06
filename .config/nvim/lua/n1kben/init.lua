@@ -25,6 +25,9 @@ require("n1kben.formatter").setup({
 -- Todo
 require("n1kben.todo").setup({})
 
+-- Visual search
+require("n1kben.visual-search").setup()
+
 -- Alternate
 require("n1kben.alternate").setup({
   patterns = {

@@ -1,3 +1,32 @@
+-- Options
+vim.lsp.inlay_hint.enable()
+vim.diagnostic.config({
+  virtual_lines = { current_line = true },
+})
+
+
+-- Keymaps
+vim.keymap.set("n", "gk", function()
+  vim.lsp.buf.hover { border = "rounded" }
+end, { desc = "LSP: Hover" })
+vim.keymap.set("n", "gd", "<C-]>", { desc = "Go to definition", remap = true })
+vim.keymap.set("n", "gD", vim.lsp.buf.declaration, { desc = "LSP: Go to declaration" })
+vim.keymap.set("n", "gra", vim.lsp.buf.code_action, { desc = "LSP: Code action" })
+vim.keymap.set("n", "grr", vim.lsp.buf.rename, { desc = "LSP: Rename" })
+
+vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
+vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+vim.keymap.set("n", "md", function()
+  vim.diagnostic.goto_next({ severity = { min = vim.diagnostic.severity.WARN } })
+end, { desc = "Next error/warning" })
+vim.keymap.set("n", "Md", function()
+  vim.diagnostic.goto_prev({ severity = { min = vim.diagnostic.severity.WARN } })
+end, { desc = "Previous error/warning" })
+vim.keymap.set("n", "mD", vim.diagnostic.goto_next, { desc = "Next diagnostic (all)" })
+vim.keymap.set("n", "MD", vim.diagnostic.goto_prev, { desc = "Previous diagnostic (all)" })
+
+
+-- LSP client setup
 local lsps_to_enable = {}
 
 for _, file in ipairs(vim.fn.glob(vim.fn.stdpath("config") .. "/lsp/*.lua", 0, 1)) do
