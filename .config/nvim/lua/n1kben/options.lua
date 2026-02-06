@@ -1,11 +1,3 @@
--- LSP
-vim.lsp.inlay_hint.enable()
-
--- Diagnostics
-vim.diagnostic.config({
-  virtual_lines = { current_line = true },
-})
-
 -- Swap files
 vim.opt.swapfile = false
 
