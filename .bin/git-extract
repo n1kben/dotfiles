@@ -57,6 +57,13 @@ if [[ -z "$COMMITS" ]]; then
   exit 0
 fi
 
+# Stash uncommitted changes (including untracked files)
+STASHED=false
+if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+  git stash -u
+  STASHED=true
+fi
+
 # Create new branch off base and cherry-pick
 git checkout -b "$BRANCH" "$BASE"
 
@@ -68,12 +75,20 @@ echo "$COMMITS" | while read -r sha; do
     echo ""
     echo "Or abort with:"
     echo "  git cherry-pick --abort && git checkout $ORIGINAL_BRANCH && git branch -d $BRANCH"
+    if $STASHED; then
+      echo "  git stash pop"
+    fi
     exit 1
   }
 done
 
 # Switch back to original branch
 git checkout "$ORIGINAL_BRANCH"
+
+# Restore stashed changes
+if $STASHED; then
+  git stash pop
+fi
 
 echo ""
 echo "Done! Extracted $(echo "$COMMITS" | wc -l | tr -d ' ') commit(s) to '$BRANCH'."
