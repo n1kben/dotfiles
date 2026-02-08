@@ -87,7 +87,8 @@ git checkout "$ORIGINAL_BRANCH"
 
 # Restore stashed changes
 if $STASHED; then
-  git stash pop
+  git stash apply
+  git stash drop
 fi
 
 echo ""
