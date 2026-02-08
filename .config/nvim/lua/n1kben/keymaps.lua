@@ -4,6 +4,13 @@ vim.keymap.set('v', '<Space>', '<Nop>', { noremap = true, silent = true })
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- Join/Split lines
+vim.keymap.set("n", "gj", "J", { desc = "Join lines" })
+--vim.keymap.set("n", "gk", "i<cr><esc>", { desc = "Insert line above" })
+
+-- Source
+vim.keymap.set("n", "%", ":source %<cr>", { desc = "Source current file" })
+
 -- Movement
 vim.keymap.set({ "n", "o", "x" }, "B", "^", { desc = "Move to start of line" })
 vim.keymap.set({ "n", "o", "x" }, "E", "$", { desc = "Move to end of line" })
