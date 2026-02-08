@@ -6,11 +6,13 @@ vim.diagnostic.config({
 
 
 -- Keymaps
-vim.keymap.set("n", "gk", function()
+vim.keymap.set("n", "gK", function()
   vim.lsp.buf.hover { border = "rounded" }
 end, { desc = "LSP: Hover" })
 vim.keymap.set("n", "gd", "<C-]>", { desc = "Go to definition", remap = true })
-vim.keymap.set("n", "gD", vim.lsp.buf.declaration, { desc = "LSP: Go to declaration" })
+vim.keymap.set("n", "gD", function()
+  vim.diagnostic.open_float({ border = "rounded" })
+end, { desc = "Hover diagnostic" })
 vim.keymap.set("n", "gra", vim.lsp.buf.code_action, { desc = "LSP: Code action" })
 vim.keymap.set("n", "grr", vim.lsp.buf.rename, { desc = "LSP: Rename" })
 
@@ -24,6 +26,21 @@ vim.keymap.set("n", "Md", function()
 end, { desc = "Previous error/warning" })
 vim.keymap.set("n", "mD", vim.diagnostic.goto_next, { desc = "Next diagnostic (all)" })
 vim.keymap.set("n", "MD", vim.diagnostic.goto_prev, { desc = "Previous diagnostic (all)" })
+
+vim.keymap.set("n", "yD", function()
+  local diagnostics = vim.diagnostic.get(0, { lnum = vim.api.nvim_win_get_cursor(0)[1] - 1 })
+  if #diagnostics == 0 then
+    vim.notify("No diagnostics on current line", vim.log.levels.WARN)
+    return
+  end
+  local messages = {}
+  for _, d in ipairs(diagnostics) do
+    table.insert(messages, d.message)
+  end
+  local text = table.concat(messages, "\n")
+  vim.fn.setreg("+", text)
+  vim.notify("Copied: " .. text:sub(1, 50) .. (text:len() > 50 and "..." or ""), vim.log.levels.INFO)
+end, { desc = "Yank diagnostics to clipboard" })
 
 
 -- LSP client setup
