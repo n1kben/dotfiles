@@ -27,7 +27,7 @@ end, { desc = "Previous error/warning" })
 vim.keymap.set("n", "mD", vim.diagnostic.goto_next, { desc = "Next diagnostic (all)" })
 vim.keymap.set("n", "MD", vim.diagnostic.goto_prev, { desc = "Previous diagnostic (all)" })
 
-vim.keymap.set("n", "yd", function()
+vim.keymap.set("n", "yD", function()
   local diagnostics = vim.diagnostic.get(0, { lnum = vim.api.nvim_win_get_cursor(0)[1] - 1 })
   if #diagnostics == 0 then
     vim.notify("No diagnostics on current line", vim.log.levels.WARN)
