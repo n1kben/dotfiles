@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: git-extract <new-branch-name> [--base <branch>]"
+  echo ""
+  echo "Interactively pick commits from the current branch to cherry-pick onto a new branch."
+  exit 1
+}
+
+# Parse args
+BASE=""
+BRANCH=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base) BASE="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    -*) echo "Unknown option: $1"; usage ;;
+    *) BRANCH="$1"; shift ;;
+  esac
+done
+
+[[ -z "$BRANCH" ]] && usage
+
+# Detect base branch
+if [[ -z "$BASE" ]]; then
+  if git rev-parse --verify main &>/dev/null; then
+    BASE="main"
+  elif git rev-parse --verify master &>/dev/null; then
+    BASE="master"
+  else
+    echo "Error: could not detect base branch. Use --base <branch>."
+    exit 1
+  fi
+fi
+
+ORIGINAL_BRANCH=$(git branch --show-current)
+
+if [[ -z "$ORIGINAL_BRANCH" ]]; then
+  echo "Error: not on a branch (detached HEAD)."
+  exit 1
+fi
+
+if [[ "$ORIGINAL_BRANCH" == "$BASE" ]]; then
+  echo "Error: already on base branch ($BASE)."
+  exit 1
+fi
+
+# Let user pick commits with fzf (oldest at bottom so selection feels natural)
+COMMITS=$(git log --oneline --reverse "$BASE..HEAD" \
+  | fzf --multi --tac \
+      --header="Pick commits to extract to '$BRANCH' (TAB to select, ENTER to confirm)" \
+  | awk '{print $1}')
+
+if [[ -z "$COMMITS" ]]; then
+  echo "No commits selected, nothing to do."
+  exit 0
+fi
+
+# Create new branch off base and cherry-pick
+git checkout -b "$BRANCH" "$BASE"
+
+echo "$COMMITS" | while read -r sha; do
+  git cherry-pick "$sha" || {
+    echo ""
+    echo "Cherry-pick failed for $sha. Resolve the conflict, then:"
+    echo "  git cherry-pick --continue"
+    echo ""
+    echo "Or abort with:"
+    echo "  git cherry-pick --abort && git checkout $ORIGINAL_BRANCH && git branch -d $BRANCH"
+    exit 1
+  }
+done
+
+# Switch back to original branch
+git checkout "$ORIGINAL_BRANCH"
+
+echo ""
+echo "Done! Extracted $(echo "$COMMITS" | wc -l | tr -d ' ') commit(s) to '$BRANCH'."
