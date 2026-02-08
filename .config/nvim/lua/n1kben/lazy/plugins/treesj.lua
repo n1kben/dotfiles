@@ -19,7 +19,7 @@ return {
       desc = "Join lines",
     },
     {
-      "gK",
+      "gk",
       function()
         if has_ts_parser() then
           require("treesj").split()
