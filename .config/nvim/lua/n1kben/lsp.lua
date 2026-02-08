@@ -6,7 +6,7 @@ vim.diagnostic.config({
 
 
 -- Keymaps
-vim.keymap.set("n", "gK", function()
+vim.keymap.set("n", "gk", function()
   vim.lsp.buf.hover { border = "rounded" }
 end, { desc = "LSP: Hover" })
 vim.keymap.set("n", "gd", "<C-]>", { desc = "Go to definition", remap = true })
