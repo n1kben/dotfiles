@@ -56,10 +56,28 @@ type KeyAction int
 
 const (
 	KeyNone KeyAction = iota
+	KeyCtrlC
 	KeyJ
 	KeyK
-	KeyCtrlJ
-	KeyCtrlK
+	KeyShiftJ
+	KeyShiftK
+	KeyH
+	KeyL
+	KeyG
+	KeyShiftG
+	KeyC
+	KeyM
+	KeyShiftM
+	KeyLeftBracket
+	KeyRightBracket
+	KeyUp
+	KeyDown
+	KeyLeft
+	KeyRight
+	KeyS
+	KeyShiftS
+	KeyV
+	KeyShiftV
 	KeyTab
 	KeyShiftTab
 	KeyEnter

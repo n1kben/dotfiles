@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+// gitRoot returns the absolute path to the repository root.
+func gitRoot() (string, error) {
+	out, err := gitCommand("rev-parse", "--show-toplevel")
+	if err != nil {
+		return "", fmt.Errorf("git root: %w", err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // isGitRepo checks if we're inside a git repository.
 func isGitRepo() bool {
 	cmd := exec.Command("git", "rev-parse", "--git-dir")
@@ -215,27 +224,15 @@ func gitApplyCached(patch string) error {
 	return cmd.Run()
 }
 
-// applyStaging applies the user's staging selections for all touched files.
-func applyStaging(files []DiffFile) error {
-	for i := range files {
-		f := &files[i]
-		if !f.Touched {
-			continue
-		}
+// applyStagingForFile applies the staging selections for a single file.
+func applyStagingForFile(f *DiffFile) {
+	stagedCount, totalCount := countStaged(f)
 
-		stagedCount, totalCount := countStaged(f)
-
-		if f.Status == StatusUntracked {
-			if err := applyUntracked(f, stagedCount, totalCount); err != nil {
-				return fmt.Errorf("apply untracked %s: %w", f.Path, err)
-			}
-		} else {
-			if err := applyTracked(f, stagedCount, totalCount); err != nil {
-				return fmt.Errorf("apply tracked %s: %w", f.Path, err)
-			}
-		}
+	if f.Status == StatusUntracked {
+		applyUntracked(f, stagedCount, totalCount)
+	} else {
+		applyTracked(f, stagedCount, totalCount)
 	}
-	return nil
 }
 
 func countStaged(f *DiffFile) (staged, total int) {

@@ -2,22 +2,9 @@ package main
 
 import (
 	"os"
-	"os/signal"
 	"syscall"
 	"unsafe"
 )
-
-// termios mirrors the C struct termios for Linux.
-type termios struct {
-	Iflag  uint32
-	Oflag  uint32
-	Cflag  uint32
-	Lflag  uint32
-	Line   uint8
-	Cc     [32]uint8
-	Ispeed uint32
-	Ospeed uint32
-}
 
 // winsize mirrors the C struct winsize.
 type winsize struct {
@@ -26,34 +13,6 @@ type winsize struct {
 	X   uint16
 	Y   uint16
 }
-
-const (
-	tcGets    = 0x5401 // TCGETS
-	tcSets    = 0x5402 // TCSETS
-	tiocgwinsz = 0x5413 // TIOCGWINSZ
-
-	// Input flags
-	iBRKINT = 0x0002
-	iICRNL  = 0x0100
-	iINPCK  = 0x0010
-	iISTRIP = 0x0020
-	iIXON   = 0x0400
-
-	// Output flags
-	oOPOST = 0x0001
-
-	// Local flags
-	lECHO   = 0x0008
-	lICANON = 0x0002
-	lIEXTEN = 0x8000
-	lISIG   = 0x0001
-
-	// Control flags
-	cCS8 = 0x0030
-
-	vMIN  = 6
-	vTIME = 5
-)
 
 var origTermios termios
 
@@ -109,9 +68,6 @@ func getTerminalSize() (int, int) {
 	return int(ws.Col), int(ws.Row)
 }
 
-func listenForResize(ch chan<- os.Signal) {
-	signal.Notify(ch, syscall.SIGWINCH)
-}
 
 func readKey() KeyAction {
 	var buf [8]byte
@@ -123,38 +79,74 @@ func readKey() KeyAction {
 	// Single byte
 	if n == 1 {
 		switch buf[0] {
-		case 0x0A: // Ctrl-J (line feed)
-			return KeyCtrlJ
-		case 0x0B: // Ctrl-K (vertical tab)
-			return KeyCtrlK
-		case 0x0D: // Enter (carriage return)
+		case 0x03: // Ctrl-C
+			return KeyCtrlC
+		case 0x0D: // Enter
 			return KeyEnter
 		case 0x09: // Tab
 			return KeyTab
 		case 0x1B: // Esc
 			return KeyEsc
-		case 0x6A: // j
+		case 'G':
+			return KeyShiftG
+		case 'J':
+			return KeyShiftJ
+		case 'K':
+			return KeyShiftK
+		case 'S':
+			return KeyShiftS
+		case 'c':
+			return KeyC
+		case 'g':
+			return KeyG
+		case 'h':
+			return KeyH
+		case 'j':
 			return KeyJ
-		case 0x6B: // k
+		case 'k':
 			return KeyK
-		case 0x71: // q
+		case 'l':
+			return KeyL
+		case 'm':
+			return KeyM
+		case 'M':
+			return KeyShiftM
+		case 's':
+			return KeyS
+		case 'v':
+			return KeyV
+		case 'V':
+			return KeyShiftV
+		case 'q':
 			return KeyQ
+		case '[':
+			return KeyLeftBracket
+		case ']':
+			return KeyRightBracket
 		}
 		return KeyNone
 	}
 
 	// Escape sequences (3+ bytes starting with ESC [)
 	if n >= 3 && buf[0] == 0x1B && buf[1] == 0x5B {
-		if buf[2] == 0x5A { // Shift-Tab: ESC [ Z
+		switch buf[2] {
+		case 'A': // Up
+			return KeyUp
+		case 'B': // Down
+			return KeyDown
+		case 'C': // Right
+			return KeyRight
+		case 'D': // Left
+			return KeyLeft
+		case 'Z': // Shift-Tab
 			return KeyShiftTab
 		}
-		// Unknown escape sequence - treat as Esc
-		return KeyEsc
+		return KeyNone
 	}
 
 	// Multi-byte starting with ESC but not ESC [
 	if buf[0] == 0x1B {
-		return KeyEsc
+		return KeyNone
 	}
 
 	return KeyNone
