@@ -3,17 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 // AppState holds the full application state.
 type AppState struct {
-	Files        []DiffFile
-	FileIdx      int
-	LineIdx      int
-	ScrollOffset int
-	DisplayLines []DisplayLine
-	Width        int
-	Height       int
+	Files            []DiffFile
+	FileIdx          int
+	FileScrollOffset int
+	LineIdx          int
+	ScrollOffset     int
+	DisplayLines     []DisplayLine
+	Width            int
+	Height           int
+	DiffFocused      bool
+	PendingKey       KeyAction
+	VisualMode       bool
+	VisualAnchor     int
 }
 
 // buildDisplayLines flattens the current file's hunks into display lines.
@@ -69,9 +75,23 @@ func (s *AppState) firstNonHeaderLine() int {
 	return 0
 }
 
+// adjustFileScroll ensures the selected file is visible in the left pane.
+func (s *AppState) adjustFileScroll() {
+	contentHeight := s.Height - 3
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	if s.FileIdx < s.FileScrollOffset {
+		s.FileScrollOffset = s.FileIdx
+	}
+	if s.FileIdx >= s.FileScrollOffset+contentHeight {
+		s.FileScrollOffset = s.FileIdx - contentHeight + 1
+	}
+}
+
 // adjustScroll ensures the cursor is visible within the right pane.
 func (s *AppState) adjustScroll() {
-	contentHeight := s.Height - 2
+	contentHeight := s.Height - 3
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
@@ -105,29 +125,58 @@ func (s *AppState) moveUp() {
 	}
 }
 
-// nextFile selects the next file.
-func (s *AppState) nextFile() {
-	if s.FileIdx < len(s.Files)-1 {
-		s.FileIdx++
-		s.buildDisplayLines()
-		s.ScrollOffset = 0
-		s.LineIdx = s.firstStageableLine()
-		s.adjustScroll()
+// selectFile switches to the given file index.
+func (s *AppState) selectFile(idx int) {
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(s.Files) {
+		idx = len(s.Files) - 1
+	}
+	if idx == s.FileIdx {
+		return
+	}
+	s.VisualMode = false
+	s.FileIdx = idx
+	s.adjustFileScroll()
+	s.buildDisplayLines()
+	s.ScrollOffset = 0
+	s.LineIdx = s.firstStageableLine()
+	s.adjustScroll()
+}
+
+// moveDownN moves down n non-header lines.
+func (s *AppState) moveDownN(n int) {
+	for i := 0; i < n; i++ {
+		s.moveDown()
 	}
 }
 
-// prevFile selects the previous file.
-func (s *AppState) prevFile() {
-	if s.FileIdx > 0 {
-		s.FileIdx--
-		s.buildDisplayLines()
-		s.ScrollOffset = 0
-		s.LineIdx = s.firstStageableLine()
-		s.adjustScroll()
+// moveUpN moves up n non-header lines.
+func (s *AppState) moveUpN(n int) {
+	for i := 0; i < n; i++ {
+		s.moveUp()
 	}
 }
 
-// toggleLine toggles the staged state of the current line, then auto-advances.
+// diffFirst jumps to the first non-header display line.
+func (s *AppState) diffFirst() {
+	s.LineIdx = s.firstNonHeaderLine()
+	s.adjustScroll()
+}
+
+// diffLast jumps to the last non-header display line.
+func (s *AppState) diffLast() {
+	for i := len(s.DisplayLines) - 1; i >= 0; i-- {
+		if !s.DisplayLines[i].IsHunkHeader {
+			s.LineIdx = i
+			s.adjustScroll()
+			return
+		}
+	}
+}
+
+// toggleLine toggles the staged state of the current line.
 func (s *AppState) toggleLine() {
 	if s.LineIdx < 0 || s.LineIdx >= len(s.DisplayLines) {
 		return
@@ -139,16 +188,115 @@ func (s *AppState) toggleLine() {
 
 	dl.Line.Staged = !dl.Line.Staged
 	s.Files[s.FileIdx].Touched = true
+}
 
-	// Auto-advance to next stageable line
+// toggleVisualSelection toggles all stageable lines in the visual selection range.
+func (s *AppState) toggleVisualSelection() {
+	lo, hi := s.VisualAnchor, s.LineIdx
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+
+	// Check if any stageable line in range is unstaged
+	anyUnstaged := false
+	for i := lo; i <= hi; i++ {
+		dl := &s.DisplayLines[i]
+		if dl.Line != nil && (dl.Line.Type == LineAdd || dl.Line.Type == LineRemove) {
+			if !dl.Line.Staged {
+				anyUnstaged = true
+				break
+			}
+		}
+	}
+
+	newState := anyUnstaged
+	for i := lo; i <= hi; i++ {
+		dl := &s.DisplayLines[i]
+		if dl.Line != nil && (dl.Line.Type == LineAdd || dl.Line.Type == LineRemove) {
+			dl.Line.Staged = newState
+		}
+	}
+
+	s.Files[s.FileIdx].Touched = true
+	s.VisualMode = false
+}
+
+// nextHunk jumps to the first non-header line of the next hunk.
+func (s *AppState) nextHunk() {
+	if len(s.DisplayLines) == 0 {
+		return
+	}
+	cur := s.DisplayLines[s.LineIdx].HunkIdx
 	for i := s.LineIdx + 1; i < len(s.DisplayLines); i++ {
-		d := &s.DisplayLines[i]
-		if d.Line != nil && (d.Line.Type == LineAdd || d.Line.Type == LineRemove) {
+		if s.DisplayLines[i].HunkIdx > cur && !s.DisplayLines[i].IsHunkHeader {
 			s.LineIdx = i
 			s.adjustScroll()
 			return
 		}
 	}
+}
+
+// prevHunk jumps to the first non-header line of the previous hunk.
+func (s *AppState) prevHunk() {
+	if len(s.DisplayLines) == 0 {
+		return
+	}
+	cur := s.DisplayLines[s.LineIdx].HunkIdx
+	if cur == 0 {
+		return
+	}
+	for i := 0; i < len(s.DisplayLines); i++ {
+		if s.DisplayLines[i].HunkIdx == cur-1 && !s.DisplayLines[i].IsHunkHeader {
+			s.LineIdx = i
+			s.adjustScroll()
+			return
+		}
+	}
+}
+
+// stageCurrentFile toggles all stageable lines in the current file.
+func (s *AppState) stageCurrentFile() {
+	if s.FileIdx < 0 || s.FileIdx >= len(s.Files) {
+		return
+	}
+	f := &s.Files[s.FileIdx]
+
+	anyUnstaged := false
+	for hi := range f.Hunks {
+		for li := range f.Hunks[hi].Lines {
+			l := &f.Hunks[hi].Lines[li]
+			if (l.Type == LineAdd || l.Type == LineRemove) && !l.Staged {
+				anyUnstaged = true
+				break
+			}
+		}
+		if anyUnstaged {
+			break
+		}
+	}
+
+	newState := anyUnstaged
+	for hi := range f.Hunks {
+		for li := range f.Hunks[hi].Lines {
+			l := &f.Hunks[hi].Lines[li]
+			if l.Type == LineAdd || l.Type == LineRemove {
+				l.Staged = newState
+			}
+		}
+	}
+	f.Touched = true
+}
+
+// applyCurrentFileStaging applies the current file's staging to git immediately.
+func (s *AppState) applyCurrentFileStaging() {
+	if s.FileIdx < 0 || s.FileIdx >= len(s.Files) {
+		return
+	}
+	f := &s.Files[s.FileIdx]
+	if !f.Touched {
+		return
+	}
+	applyStagingForFile(f)
 }
 
 // toggleHunk toggles all stageable lines in the current hunk.
@@ -186,6 +334,15 @@ func (s *AppState) toggleHunk() {
 func run() error {
 	if !isGitRepo() {
 		return fmt.Errorf("not a git repository")
+	}
+
+	// Change to repo root so all paths are consistent
+	root, err := gitRoot()
+	if err != nil {
+		return err
+	}
+	if err := os.Chdir(root); err != nil {
+		return fmt.Errorf("chdir to git root: %w", err)
 	}
 
 	files, err := discoverFiles()
@@ -252,52 +409,140 @@ func run() error {
 	state.LineIdx = state.firstStageableLine()
 	state.adjustScroll()
 
-	// Handle resize signals
-	resizeCh := make(chan os.Signal, 1)
-	listenForResize(resizeCh)
+	// Read keys in a goroutine so we can also handle resize
+	keyCh := make(chan KeyAction, 1)
+	go func() {
+		for {
+			k := readKey()
+			keyCh <- k
+		}
+	}()
+
+	// Poll for terminal size changes
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 
 	render(state)
 
 	for {
-		// Check for resize (non-blocking)
 		select {
-		case <-resizeCh:
+		case <-ticker.C:
+			w, h := getTerminalSize()
+			if w != state.Width || h != state.Height {
+				state.Width = w
+				state.Height = h
+				state.adjustFileScroll()
+				state.adjustScroll()
+				render(state)
+			}
+
+		case key := <-keyCh:
+			if key == KeyNone {
+				continue
+			}
+
+			if state.PendingKey != KeyNone {
+				pending := state.PendingKey
+				state.PendingKey = KeyNone
+				switch {
+				case pending == KeyG && key == KeyG:
+					if state.DiffFocused {
+						state.diffFirst()
+					} else {
+						state.selectFile(0)
+					}
+				case pending == KeyRightBracket && key == KeyC:
+					if state.DiffFocused {
+						state.nextHunk()
+					}
+				case pending == KeyLeftBracket && key == KeyC:
+					if state.DiffFocused {
+						state.prevHunk()
+					}
+				case pending == KeyM && key == KeyC:
+					state.toggleHunk()
+					state.VisualMode = false
+					state.applyCurrentFileStaging()
+				case pending == KeyShiftM && key == KeyC:
+					state.stageCurrentFile()
+					state.VisualMode = false
+					state.applyCurrentFileStaging()
+				}
+			} else {
+				switch key {
+				case KeyJ, KeyDown:
+					if state.DiffFocused {
+						state.moveDown()
+					} else {
+						state.selectFile(state.FileIdx + 1)
+					}
+				case KeyK, KeyUp:
+					if state.DiffFocused {
+						state.moveUp()
+					} else {
+						state.selectFile(state.FileIdx - 1)
+					}
+				case KeyShiftJ:
+					if state.DiffFocused {
+						state.moveDownN(5)
+					} else {
+						state.selectFile(state.FileIdx + 5)
+					}
+				case KeyShiftK:
+					if state.DiffFocused {
+						state.moveUpN(5)
+					} else {
+						state.selectFile(state.FileIdx - 5)
+					}
+				case KeyH, KeyLeft:
+					state.DiffFocused = false
+					state.VisualMode = false
+				case KeyL, KeyRight:
+					state.DiffFocused = true
+				case KeyG, KeyLeftBracket, KeyRightBracket, KeyM, KeyShiftM:
+					state.PendingKey = key
+				case KeyShiftG:
+					if state.DiffFocused {
+						state.diffLast()
+					} else {
+						state.selectFile(len(state.Files) - 1)
+					}
+				case KeyTab:
+					state.DiffFocused = !state.DiffFocused
+					state.VisualMode = false
+				case KeyV, KeyShiftV:
+					if state.DiffFocused && !state.VisualMode {
+						state.VisualMode = true
+						state.VisualAnchor = state.LineIdx
+					}
+				case KeyS:
+					if state.VisualMode {
+						state.toggleVisualSelection()
+					} else {
+						state.toggleLine()
+					}
+					state.applyCurrentFileStaging()
+				case KeyShiftS, KeyShiftTab:
+					state.toggleHunk()
+					state.VisualMode = false
+					state.applyCurrentFileStaging()
+				case KeyEnter:
+					state.stageCurrentFile()
+					state.VisualMode = false
+					state.applyCurrentFileStaging()
+				case KeyEsc:
+					if state.VisualMode {
+						state.VisualMode = false
+					}
+				case KeyQ, KeyCtrlC:
+					return nil
+				}
+			}
+
 			state.Width, state.Height = getTerminalSize()
+			state.adjustFileScroll()
 			state.adjustScroll()
 			render(state)
-			continue
-		default:
 		}
-
-		key := readKey()
-		switch key {
-		case KeyNone:
-			continue
-		case KeyJ:
-			state.moveDown()
-		case KeyK:
-			state.moveUp()
-		case KeyCtrlJ:
-			state.nextFile()
-		case KeyCtrlK:
-			state.prevFile()
-		case KeyTab:
-			state.toggleLine()
-		case KeyShiftTab:
-			state.toggleHunk()
-		case KeyEnter:
-			// Save and exit
-			disableRawMode()
-			exitAltScreen()
-			if err := applyStaging(state.Files); err != nil {
-				return fmt.Errorf("apply staging: %w", err)
-			}
-			return nil
-		case KeyEsc, KeyQ:
-			// Abort
-			return nil
-		}
-
-		render(state)
 	}
 }

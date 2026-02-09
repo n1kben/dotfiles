@@ -14,27 +14,28 @@ const (
 	colorYellow  = "\x1b[33m"
 	colorCyan    = "\x1b[36m"
 	colorDim     = "\x1b[2m"
-	colorReverse = "\x1b[7m"
+	colorReverse    = "\x1b[7m"
+	colorDimReverse = "\x1b[2;7m"
 	bgDarkGreen  = "\x1b[48;5;22m"
 	bgDarkRed    = "\x1b[48;5;52m"
+	bgVisualSel  = "\x1b[48;5;238m"
 )
 
 // render draws the entire screen.
 func render(state *AppState) {
 	var buf bytes.Buffer
 
-	// Hide cursor and move to top-left
+	// Begin synchronized update, hide cursor
+	buf.WriteString("\x1b[?2026h")
 	buf.WriteString("\x1b[?25l")
-	buf.WriteString("\x1b[H")
-	// Clear screen
-	buf.WriteString("\x1b[2J")
 
 	w := state.Width
 	h := state.Height
 
 	if w < 40 || h < 10 {
-		buf.WriteString("Terminal too small")
+		buf.WriteString("\x1b[H\x1b[2JTerminal too small")
 		buf.WriteString("\x1b[?25h")
+		buf.WriteString("\x1b[?2026l")
 		os.Stdout.Write(buf.Bytes())
 		return
 	}
@@ -46,10 +47,13 @@ func render(state *AppState) {
 	if leftWidth > 50 {
 		leftWidth = 50
 	}
-	rightWidth := w - leftWidth - 1 // 1 for separator
-	contentHeight := h - 2          // top border + bottom status bar
+	rightWidth := w - leftWidth - 3 // 3 for left border + separator + right border
+	contentHeight := h - 3          // top border + bottom border + status bar
 
-	// Row 1: top border
+	row := 1
+
+	// Top border
+	buf.WriteString(fmt.Sprintf("\x1b[%d;1H", row))
 	buf.WriteString(colorDim)
 	buf.WriteString("\u250c")
 	buf.WriteString(strings.Repeat("\u2500", leftWidth))
@@ -57,34 +61,34 @@ func render(state *AppState) {
 	buf.WriteString(strings.Repeat("\u2500", rightWidth))
 	buf.WriteString("\u2510")
 	buf.WriteString(colorReset)
-	buf.WriteString("\r\n")
+	buf.WriteString("\x1b[K")
+	row++
 
 	// Content rows
-	for row := 0; row < contentHeight; row++ {
-		// Left pane
-		buf.WriteString(colorDim)
-		buf.WriteString("\u2502")
-		buf.WriteString(colorReset)
-
-		leftContent := renderFileListRow(state, row, leftWidth)
-		buf.WriteString(leftContent)
-
-		// Separator
-		buf.WriteString(colorDim)
-		buf.WriteString("\u2502")
-		buf.WriteString(colorReset)
-
-		// Right pane
-		rightContent := renderDiffRow(state, row, rightWidth)
-		buf.WriteString(rightContent)
+	for r := 0; r < contentHeight; r++ {
+		buf.WriteString(fmt.Sprintf("\x1b[%d;1H", row))
 
 		buf.WriteString(colorDim)
 		buf.WriteString("\u2502")
 		buf.WriteString(colorReset)
-		buf.WriteString("\r\n")
+
+		buf.WriteString(renderFileListRow(state, r, leftWidth))
+
+		buf.WriteString(colorDim)
+		buf.WriteString("\u2502")
+		buf.WriteString(colorReset)
+
+		buf.WriteString(renderDiffRow(state, r, rightWidth))
+
+		buf.WriteString(colorDim)
+		buf.WriteString("\u2502")
+		buf.WriteString(colorReset)
+		buf.WriteString("\x1b[K")
+		row++
 	}
 
 	// Bottom border
+	buf.WriteString(fmt.Sprintf("\x1b[%d;1H", row))
 	buf.WriteString(colorDim)
 	buf.WriteString("\u2514")
 	buf.WriteString(strings.Repeat("\u2500", leftWidth))
@@ -92,28 +96,46 @@ func render(state *AppState) {
 	buf.WriteString(strings.Repeat("\u2500", rightWidth))
 	buf.WriteString("\u2518")
 	buf.WriteString(colorReset)
-	buf.WriteString("\r\n")
+	buf.WriteString("\x1b[K")
+	row++
 
 	// Status bar
-	statusBar := " j/k:lines  C-j/C-k:files  Tab:toggle line  S-Tab:toggle hunk  Enter:save  Esc/q:abort"
+	buf.WriteString(fmt.Sprintf("\x1b[%d;1H", row))
+	statusBar := " j/k:move  J/K:\u00d75  ]c/[c:hunk  Tab:pane  s:line  S/mc:hunk  Enter/Mc:file  v:visual  q:quit"
 	buf.WriteString(colorDim)
 	buf.WriteString(truncateVisible(statusBar, w))
 	buf.WriteString(colorReset)
+	buf.WriteString("\x1b[K")
 
-	// Show cursor
+	// Clear any remaining lines below
+	buf.WriteString("\x1b[J")
+
+	// Show cursor, end synchronized update
 	buf.WriteString("\x1b[?25h")
+	buf.WriteString("\x1b[?2026l")
 
 	os.Stdout.Write(buf.Bytes())
 }
 
 // renderFileListRow renders one row of the left pane.
 func renderFileListRow(state *AppState, row, width int) string {
-	if row >= len(state.Files) {
+	fileRow := state.FileScrollOffset + row
+	if fileRow >= len(state.Files) {
 		return padRight("", width)
 	}
 
-	f := &state.Files[row]
-	isSelected := row == state.FileIdx
+	f := &state.Files[fileRow]
+	isSelected := fileRow == state.FileIdx
+
+	// Selection style depends on pane focus
+	selStyle := ""
+	if isSelected {
+		if !state.DiffFocused {
+			selStyle = colorReverse
+		} else {
+			selStyle = colorDimReverse
+		}
+	}
 
 	// Status char
 	var statusChar string
@@ -143,35 +165,37 @@ func renderFileListRow(state *AppState, row, width int) string {
 		counterColor = colorDim
 	}
 
-	// Build the visible content:  "M path  [3/12]"
-	// We need: 1 space + statusChar + 1 space + path + padding + counter + 1 space
+	// Build the visible content:  " M path  [3/12] "
+	// Layout: " M "(3) + path + gap(min 1) + counter + " "(1) = width
 	counterVisLen := len(counter)
-	pathMaxLen := width - 3 - counterVisLen - 1 // " M " prefix + counter + trailing space
+	pathMaxLen := width - 5 - counterVisLen
 	if pathMaxLen < 1 {
 		pathMaxLen = 1
 	}
 
 	displayPath := f.Path
-	if len(displayPath) > pathMaxLen {
+	pathVisLen := len(displayPath) // ASCII-only paths: byte len == visible len
+	if pathVisLen > pathMaxLen {
 		displayPath = "\u2026" + displayPath[len(displayPath)-pathMaxLen+1:]
+		pathVisLen = pathMaxLen
 	}
 
 	// Gap between path and counter
-	gap := width - 3 - len(displayPath) - counterVisLen - 1
+	gap := width - 3 - pathVisLen - counterVisLen - 1
 	if gap < 1 {
 		gap = 1
 	}
 
 	var sb strings.Builder
 	if isSelected {
-		sb.WriteString(colorReverse)
+		sb.WriteString(selStyle)
 	}
 	sb.WriteString(" ")
 	sb.WriteString(statusColor)
 	sb.WriteString(statusChar)
 	sb.WriteString(colorReset)
 	if isSelected {
-		sb.WriteString(colorReverse)
+		sb.WriteString(selStyle)
 	}
 	sb.WriteString(" ")
 	sb.WriteString(displayPath)
@@ -180,13 +204,13 @@ func renderFileListRow(state *AppState, row, width int) string {
 	sb.WriteString(counter)
 	sb.WriteString(colorReset)
 	if isSelected {
-		sb.WriteString(colorReverse)
+		sb.WriteString(selStyle)
 	}
 	sb.WriteString(" ")
 	sb.WriteString(colorReset)
 
 	// Pad to exact width considering visible chars only
-	visLen := 3 + len(displayPath) + gap + counterVisLen + 1
+	visLen := 3 + pathVisLen + gap + counterVisLen + 1
 	if visLen < width {
 		sb.WriteString(strings.Repeat(" ", width-visLen))
 	}
@@ -207,13 +231,30 @@ func renderDiffRow(state *AppState, row, width int) string {
 	dl := &state.DisplayLines[lineIdx]
 	isCurrent := lineIdx == state.LineIdx
 
+	// Check if line is in visual selection
+	inVisual := false
+	if state.VisualMode && state.DiffFocused {
+		lo, hi := state.VisualAnchor, state.LineIdx
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		inVisual = lineIdx >= lo && lineIdx <= hi
+	}
+
 	var sb strings.Builder
 
 	// Gutter (3 chars)
 	gutterWidth := 3
-	if isCurrent {
+	if isCurrent && state.DiffFocused {
 		sb.WriteString(colorReverse)
 		sb.WriteString(" \u25b8 ")
+	} else if isCurrent {
+		sb.WriteString(colorDim)
+		sb.WriteString(" \u25b8 ")
+		sb.WriteString(colorReset)
+	} else if inVisual {
+		sb.WriteString(bgVisualSel)
+		sb.WriteString("   ")
 	} else {
 		sb.WriteString("   ")
 	}
@@ -222,13 +263,11 @@ func renderDiffRow(state *AppState, row, width int) string {
 
 	if dl.IsHunkHeader {
 		text := truncateVisible(dl.HunkHeaderText, contentWidth)
-		if isCurrent {
-			sb.WriteString(colorCyan)
-			sb.WriteString(text)
-		} else {
-			sb.WriteString(colorCyan)
-			sb.WriteString(text)
+		if inVisual {
+			sb.WriteString(bgVisualSel)
 		}
+		sb.WriteString(colorCyan)
+		sb.WriteString(text)
 		visPad := contentWidth - visibleLen(dl.HunkHeaderText)
 		if visPad > 0 {
 			sb.WriteString(strings.Repeat(" ", visPad))
@@ -257,14 +296,17 @@ func renderDiffRow(state *AppState, row, width int) string {
 		visLen = contentWidth
 	}
 
+	if inVisual {
+		sb.WriteString(bgVisualSel)
+	}
 	switch line.Type {
 	case LineAdd:
-		if line.Staged {
+		if line.Staged && !inVisual {
 			sb.WriteString(bgDarkGreen)
 		}
 		sb.WriteString(colorGreen)
 	case LineRemove:
-		if line.Staged {
+		if line.Staged && !inVisual {
 			sb.WriteString(bgDarkRed)
 		}
 		sb.WriteString(colorRed)
