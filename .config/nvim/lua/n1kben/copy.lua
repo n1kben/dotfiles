@@ -17,8 +17,8 @@ local function get_git_remote_url()
 end
 
 local function parse_github_url(remote_url)
-  -- SSH: git@github.com:org/repo.git
-  local org, repo = remote_url:match('^git@github%.com:([^/]+)/(.+)')
+  -- SSH: git@github.com:org/repo.git (also handles aliases like github.com-user)
+  local org, repo = remote_url:match('^git@github%.com[^:]*:([^/]+)/(.+)')
   if not org then
     -- HTTPS: https://github.com/org/repo.git
     org, repo = remote_url:match('^https://github%.com/([^/]+)/(.+)')
@@ -241,6 +241,7 @@ function M.location_github(is_visual)
     return
   end
 
+  -- Capture buffer state before async call
   local rel_path = vim.fn.expand('%:p'):sub(#git_root + 2)
   local line_ref
 
@@ -254,9 +255,26 @@ function M.location_github(is_visual)
     line_ref = string.format('#L%d', line)
   end
 
-  local url = string.format('https://github.com/%s/%s/blob/%s/%s%s', org, repo, commit, rel_path, line_ref)
-  vim.fn.setreg('+', url)
-  vim.notify('Copied: ' .. url, vim.log.levels.INFO, { title = 'Copy - GitHub URL' })
+  -- Check if file has uncommitted changes
+  local diff_result = vim.system({ 'git', 'diff', '--quiet', 'HEAD', '--', rel_path }, { cwd = git_root }):wait()
+  if diff_result.code ~= 0 then
+    vim.notify('File has uncommitted changes', vim.log.levels.WARN, { title = 'Copy - GitHub URL' })
+    return
+  end
+
+  -- Check if commit has been pushed to remote (async to avoid blocking)
+  vim.system({ 'git', 'branch', '-r', '--contains', commit }, { text = true }, function(result)
+    vim.schedule(function()
+      if result.code ~= 0 or not result.stdout or vim.trim(result.stdout) == '' then
+        vim.notify('Current commit has not been pushed to remote', vim.log.levels.WARN, { title = 'Copy - GitHub URL' })
+        return
+      end
+
+      local url = string.format('https://github.com/%s/%s/blob/%s/%s%s', org, repo, commit, rel_path, line_ref)
+      vim.fn.setreg('+', url)
+      vim.notify('Copied: ' .. url, vim.log.levels.INFO, { title = 'Copy - GitHub URL' })
+    end)
+  end)
 end
 
 function M.setup(opts)
