@@ -4,6 +4,36 @@ M.config = {
   path_style = 'relative', -- 'relative' (to cwd), 'absolute', or 'git_root'
 }
 
+local ns = vim.api.nvim_create_namespace('copy_highlight')
+
+local function flash(start_line, start_col, end_line, end_col)
+  vim.hl.range(0, ns, 'IncSearch', { start_line, start_col }, { end_line, end_col })
+  vim.defer_fn(function() vim.api.nvim_buf_clear_namespace(0, ns, 0, -1) end, 500)
+end
+
+local function flash_line(line)
+  flash(line - 1, 0, line - 1, #vim.fn.getline(line))
+end
+
+local function flash_cword()
+  local line = vim.fn.line('.')
+  local line_text = vim.fn.getline(line)
+  local cursor_col = vim.fn.col('.') - 1 -- 0-based
+  local word = vim.fn.expand('<cword>')
+  local start = line_text:find(word, 1, true)
+  -- Find the occurrence closest to cursor
+  if start then
+    while true do
+      local next_start = line_text:find(word, start + 1, true)
+      if not next_start or math.abs(next_start - 1 - cursor_col) > math.abs(start - 1 - cursor_col) then
+        break
+      end
+      start = next_start
+    end
+    flash(line - 1, start - 1, line - 1, start - 1 + #word)
+  end
+end
+
 local function get_git_root()
   local result = vim.system({ 'git', 'rev-parse', '--show-toplevel' }, { text = true }):wait()
   if result.code ~= 0 or not result.stdout then return nil end
@@ -71,15 +101,16 @@ function M.location(is_visual)
     end
 
     location = string.format('%s:%d:%d-%d:%d', path, start_line, start_col, end_line, end_col)
+    vim.fn.setreg('+', location)
+    flash(start_line - 1, start_col - 1, end_line - 1, end_col)
   else
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = cursor[1]
     local col = cursor[2] + 1 -- convert 0-based to 1-based
     location = string.format('%s:%d:%d', path, line, col)
+    vim.fn.setreg('+', location)
+    flash_line(line)
   end
-
-  vim.fn.setreg('+', location)
-  vim.notify('Copied: ' .. location, vim.log.levels.INFO, { title = "Copy - Location" })
 end
 
 --
@@ -122,7 +153,7 @@ function M.lsp_type()
     end
 
     vim.fn.setreg('+', text)
-    vim.notify('Copied: ' .. text:sub(1, 50) .. (text:len() > 50 and '...' or ''), vim.log.levels.INFO, { title = "Copy - LSP Type" })
+    flash_cword()
   end)
 end
 
@@ -152,7 +183,8 @@ function M.lsp_diagnostic()
 
   local msg = best.message
   vim.fn.setreg('+', msg)
-  vim.notify('Copied: ' .. msg:sub(1, 50) .. (msg:len() > 50 and '...' or ''), vim.log.levels.INFO, { title = "Copy - LSP Diagnostic" })
+  local end_col = best.end_col or (best.col + 1)
+  flash(best.lnum, best.col, best.end_lnum or best.lnum, end_col)
 end
 
 --
@@ -209,7 +241,7 @@ function M.location_context()
     end
 
     vim.fn.setreg('+', location)
-    vim.notify('Copied: ' .. location, vim.log.levels.INFO, { title = "Copy - Location Context" })
+    flash_cword()
   end)
 end
 
@@ -245,14 +277,20 @@ function M.location_github(is_visual)
   local rel_path = vim.fn.expand('%:p'):sub(#git_root + 2)
   local line_ref
 
+  local flash_args
   if is_visual then
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<Esc>', true, false, true), 'nx', false)
     local start_line = vim.fn.getpos("'<")[2]
+    local start_col = vim.fn.getpos("'<")[3]
     local end_line = vim.fn.getpos("'>")[2]
+    local end_col = vim.fn.getpos("'>")[3]
+    if end_col >= 2147483647 then end_col = #vim.fn.getline(end_line) end
     line_ref = string.format('#L%d-L%d', start_line, end_line)
+    flash_args = { start_line - 1, start_col - 1, end_line - 1, end_col }
   else
     local line = vim.api.nvim_win_get_cursor(0)[1]
     line_ref = string.format('#L%d', line)
+    flash_args = { line - 1, 0, line - 1, #vim.fn.getline(line) }
   end
 
   -- Check if file has uncommitted changes
@@ -272,7 +310,7 @@ function M.location_github(is_visual)
 
       local url = string.format('https://github.com/%s/%s/blob/%s/%s%s', org, repo, commit, rel_path, line_ref)
       vim.fn.setreg('+', url)
-      vim.notify('Copied: ' .. url, vim.log.levels.INFO, { title = 'Copy - GitHub URL' })
+      flash(flash_args[1], flash_args[2], flash_args[3], flash_args[4])
     end)
   end)
 end
@@ -280,10 +318,10 @@ end
 function M.setup(opts)
   M.config = vim.tbl_deep_extend('force', M.config, opts or {})
 
-  vim.keymap.set('n', 'yl', function() M.location(false) end, { desc = 'Copy file location' })
-  vim.keymap.set('x', 'yl', function() M.location(true) end, { desc = 'Copy file location (visual)' })
-  vim.keymap.set('n', 'yL', function() M.location_github(false) end, { desc = 'Copy GitHub URL' })
-  vim.keymap.set('x', 'yL', function() M.location_github(true) end, { desc = 'Copy GitHub URL (visual)' })
+  vim.keymap.set('n', 'gyl', function() M.location(false) end, { desc = 'Copy file location' })
+  vim.keymap.set('x', 'gyl', function() M.location(true) end, { desc = 'Copy file location (visual)' })
+  vim.keymap.set('n', 'gyL', function() M.location_github(false) end, { desc = 'Copy GitHub URL' })
+  vim.keymap.set('x', 'gyL', function() M.location_github(true) end, { desc = 'Copy GitHub URL (visual)' })
 end
 
 return M
