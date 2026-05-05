@@ -320,6 +320,8 @@ function M.setup(opts)
 
   vim.keymap.set('n', 'gyl', function() M.location(false) end, { desc = 'Copy file location' })
   vim.keymap.set('x', 'gyl', function() M.location(true) end, { desc = 'Copy file location (visual)' })
+  vim.keymap.set('n', 'gyd', function() M.lsp_diagnostic() end, { desc = 'Copy LSP diagnostic' })
+  vim.keymap.set('n', 'gyk', function() M.lsp_type() end, { desc = 'Copy LSP type' })
   vim.keymap.set('n', 'gyL', function() M.location_github(false) end, { desc = 'Copy GitHub URL' })
   vim.keymap.set('x', 'gyL', function() M.location_github(true) end, { desc = 'Copy GitHub URL (visual)' })
 end
