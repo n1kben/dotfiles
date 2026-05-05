@@ -28,10 +28,20 @@ alias gpr="git pull --rebase origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gpm="git pull origin \$(git rev-parse --abbrev-ref HEAD)"
 alias gcb="git checkout \$(fzg branch)"
 alias b='git checkout $(basename "$PWD") && git fetch origin master && git rebase origin/master'
-alias grm="git fetch origin master && git rebase origin/master"
 alias g-="git checkout -"
 alias g.="git checkout ."
 alias s='git add --all && git commit -m "Snapshot: $(date +"%Y-%m-%d %H:%M:%S")"'
+grm() {
+  git fetch origin
+  if git show-ref --verify --quiet refs/remotes/origin/main; then
+    git rebase origin/main
+  elif git show-ref --verify --quiet refs/remotes/origin/master; then
+    git rebase origin/master
+  else
+    echo "grm: neither origin/main nor origin/master exists" >&2
+    return 1
+  fi
+}
 
 
 # FZF
