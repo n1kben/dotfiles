@@ -54,7 +54,7 @@ vim.keymap.set("x", "<S-Tab>", "<gv", { desc = "Indent left" })
 -- Search
 vim.keymap.set("n", "<esc>", "<cmd>nohls<cr>", { desc = "Clear search highlight" })
 vim.keymap.set("n", "<leader>n", "*", { desc = "Search word under cursor forwards" })
-vim.keymap.set("n", "R", [[:%s/<C-r><C-w>//g<Left><Left>]], { desc = "Replace word under cursor" })
+vim.keymap.set("n", "R", "<cmd>edit<cr>", { desc = "Reload file from disk" })
 vim.keymap.set("x", "r", '"hy:%s/<C-r>h//gc<left><left><left>', { desc = "Replace visual selection" })
 
 -- Quickfix
