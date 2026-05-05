@@ -53,6 +53,31 @@ vim.api.nvim_create_autocmd("TextYankPost", {
   end,
 })
 
+-- Neovide
+if vim.g.neovide then
+  vim.o.guifont = "SauceCodePro Nerd Font Mono:h18"
+  vim.g.neovide_padding_top = 30
+  vim.g.neovide_padding_bottom = 30
+  vim.g.neovide_padding_left = 30
+  vim.g.neovide_padding_right = 30
+  if vim.fn.argc() == 0 then
+    local notes = vim.fn.expand("~/Dropbox/Notes")
+    vim.cmd.cd(notes)
+    vim.api.nvim_create_autocmd("VimEnter", {
+      once = true,
+      callback = function()
+        vim.schedule(function()
+          require("oil").open(notes)
+        end)
+      end,
+    })
+  end
+  vim.g.neovide_cursor_animation_length = 0
+  vim.g.neovide_cursor_trail_size = 0
+  vim.g.neovide_cursor_animate_in_insert_mode = false
+  vim.g.neovide_cursor_animate_command_line = false
+end
+
 -- o or O don’t automatically continue the comment from the previous line
 local formatoptions_group = vim.api.nvim_create_augroup("formatoptions", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
