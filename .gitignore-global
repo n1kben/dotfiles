@@ -9,7 +9,7 @@ tags
 *.dump
 ngrok
 .unisonHistory
-.claude
 .env
 .env.*
 .title
+*.local.*
