@@ -13,3 +13,4 @@ ngrok
 .env.*
 .title
 *.local.*
+.review
