@@ -3,6 +3,8 @@ name: review
 description: Review whatever's in front of you — a diff, an implementation, a doc, a design, a plan — by fanning out subagents for the relevant angles (correctness/bugs, design/structure, and conformance to any governing docs when they exist), then synthesizing. Use when the user asks to "review", "review this", "review my changes", or to check something for problems before shipping.
 ---
 
+<--- todo: Lets make it look relentlessly many times and then validate findings with subadjents to remove fluff. --->
+
 # Review
 
 **Goal:** find what's wrong or risky in the thing under review, and hand back one synthesized, severity-ordered report — not raw dumps.
