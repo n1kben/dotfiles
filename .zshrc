@@ -193,6 +193,20 @@ _update_prompt() {
 add-zsh-hook precmd _update_prompt
 
 
+# Terminal tab title (branch name, or relative path if not in a repo)
+# ----------------------------
+_set_tab_title() {
+  local title
+  title=$(git symbolic-ref --short HEAD 2>/dev/null) \
+    || title=$(git rev-parse --short HEAD 2>/dev/null) \
+    || title=${PWD/#$HOME/~}
+  print -Pn "\e]2;${title}\a"
+}
+
+add-zsh-hook precmd _set_tab_title
+add-zsh-hook preexec _set_tab_title
+
+
 # Syntax highlighting (must the last line)
 # ----------------------------
 [[ -f $HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
@@ -208,3 +222,10 @@ bindkey '^[[Z' autosuggest-accept # Shift+Tab for full suggestion
 
 autoload -Uz compinit
 compinit
+
+# bun completions
+[ -s "/Users/viktor/.bun/_bun" ] && source "/Users/viktor/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
