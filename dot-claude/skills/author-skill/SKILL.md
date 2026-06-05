@@ -9,6 +9,4 @@ Describe the outcome the agent should reach and why, in a direct imperative. Fra
 
 Lean on progressive disclosure: push detail into flat, caps-named docs in the skill folder, linked from SKILL.md as `[SOME-REF.md](./SOME-REF.md)`. Those docs can be as structured as they need to be.
 
-When work is deterministic — validation, formatting, the same boilerplate every run — bundle a script in the folder and have the skill call it; that beats regenerating code for reliability and tokens.
-
 The description is all the agent sees when deciding whether to load the skill. Write it third person, under 1024 chars: one sentence on what it does, then a trigger clause. Generalize — name the range of verbs and contexts, let "however loosely phrased" carry the variants. Skip quoted examples; they bloat it and bias matching toward that exact wording.
