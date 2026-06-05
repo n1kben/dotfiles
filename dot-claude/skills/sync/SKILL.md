@@ -1,11 +1,6 @@
 ---
 name: sync
-description: Commit, rebase on latest master, and push. Use when the user wants to quickly sync their branch.
+description: Commit, rebase onto latest master, and force-push the current branch. Trigger when the user wants to "sync", "sync my branch", "rebase and push", or bring their branch up to date with master.
 ---
 
-Run these steps. Stop immediately if any step fails.
-
-- Commit any changes
-- Fetch latest origin master/main
-- Rebase origin master/main (If the rebase has conflicts, stop and show them to the user — do NOT resolve automatically)
-- Force push with lease
+Commit any outstanding changes, rebase onto the latest `origin/master` (or `origin/main`), then force-push with lease. Stop if any step fails — and if the rebase conflicts, show the user rather than resolving automatically.

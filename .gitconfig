@@ -34,3 +34,5 @@
   hunk-header-decoration-style = ul
 [merge]
   conflictStyle = zdiff3
+[url "ssh://git@github.com-REDACTED/REDACTED-se/"]
+	insteadOf = https://github.com/REDACTED-se/
