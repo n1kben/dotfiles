@@ -11,7 +11,7 @@ Find the docs that set the standard — CLAUDE.md, AGENTS.md, READMEs, contribut
 
 ### 2. Fan out
 
-Spawn independent subagents concurrently, one per angle that fits the material — correctness, bugs, design, and conformance whenever something governs the material — each with a single remit, handing the scouted docs to the conformance one.
+Spawn independent subagents concurrently, one per angle that fits the material — correctness, design, and conformance whenever something governs the material — each with a single remit, handing the scouted docs to the conformance one.
 
 ### 3. Refute
 
