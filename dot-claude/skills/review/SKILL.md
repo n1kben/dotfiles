@@ -5,13 +5,13 @@ description: Surface the real flaws in whatever's in front of you. Use whenever 
 
 Review by fanning out, never in one pass.
 
-### 1. Scout what governs the work
+### 1. Scout what governs the material
 
 Find the docs that set the standard — CLAUDE.md, AGENTS.md, READMEs, contributing guides, ADRs, the conventions of the surrounding code — so conformance is checked against a real standard rather than guesswork.
 
 ### 2. Fan out
 
-Spawn independent subagents concurrently, one per angle that fits the material — correctness, bugs, design, and conformance whenever something governs the work — each with a single remit, handing the scouted docs to the conformance one.
+Spawn independent subagents concurrently, one per angle that fits the material — correctness, bugs, design, and conformance whenever something governs the material — each with a single remit, handing the scouted docs to the conformance one.
 
 ### 3. Refute
 
