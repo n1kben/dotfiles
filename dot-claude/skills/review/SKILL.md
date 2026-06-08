@@ -7,11 +7,11 @@ Review by fanning out, never in one pass.
 
 ### 1. Scout what governs the material
 
-Find the docs that set the standard — CLAUDE.md, AGENTS.md, READMEs, contributing guides, ADRs, the conventions of the surrounding code — so conformance is checked against a real standard rather than guesswork.
+Find the docs that set the standard — CLAUDE.md, AGENTS.md, READMEs, contributing guides, ADRs, the conventions of the surrounding code — so the review is grounded in how the material is meant to be done.
 
 ### 2. Fan out
 
-Spawn independent subagents concurrently, one per angle that fits the material — correctness, design, and conformance whenever something governs the material — each with a single remit, handing the scouted docs to the conformance one.
+Spawn independent subagents concurrently, one per angle that fits the material — correctness, design, and conformance whenever something governs the material — each with a single remit, handing every one the scouted docs so each judges against the governing context rather than guesswork.
 
 ### 3. Refute
 
