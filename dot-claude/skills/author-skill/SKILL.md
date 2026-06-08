@@ -7,6 +7,8 @@ For a new skill, confirm the name and whether it lives in the project or home be
 
 Describe the outcome the agent should reach and why, as a direct imperative — what to do, not what to avoid, stated plainly rather than sold — and keep each skill to a single purpose. A skill steers the agent through words: where the procedure turns on a concept, name it precisely, define it, and hold the agent to that name rather than letting synonyms drift. Consistent language is what makes the behaviour reliable; for some skills, aligning meaning between user, code, and agent is the whole job.
 
+A skill runs in a vacuum: the agent that runs it has none of the conversation you authored it in. That context is easy to leak onto the page — write for a stranger, and keep the content independent of the task at hand.
+
 ## Three tiers
 
 A skill spreads its content across three tiers, each paid for differently; put each piece where its frequency-of-need matches its cost.
