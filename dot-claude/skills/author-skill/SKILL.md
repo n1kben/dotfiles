@@ -5,8 +5,22 @@ description: Author, review, or improve a skill. Trigger whenever a skill itself
 
 For a new skill, confirm the name and whether it lives in the project or home before writing anything.
 
-Describe the outcome the agent should reach and why, in a direct imperative. Frame it as what to do rather than what to avoid — the agent follows positive direction far better than prohibitions. Keep each skill focused on a single purpose, and keep SKILL.md concise: under 100 words, prose, no headings or lists.
+Describe the outcome the agent should reach and why, as a direct imperative — what to do, not what to avoid, stated plainly rather than sold — and keep each skill to a single purpose. A skill steers the agent through words: where the procedure turns on a concept, name it precisely, define it, and hold the agent to that name rather than letting synonyms drift. Consistent language is what makes the behaviour reliable; for some skills, aligning meaning between user, code, and agent is the whole job.
 
-Lean on progressive disclosure: push detail into flat, caps-named docs in the skill folder, linked from SKILL.md as `[SOME-REF.md](./SOME-REF.md)`. Those docs can be as structured as they need to be.
+## Three tiers
 
-The description is all the agent sees when deciding whether to load the skill. Write it third person, under 1024 chars: one sentence on what it does, then a trigger clause. Generalize — name the range of verbs and contexts, let "however loosely phrased" carry the variants. Skip quoted examples; they bloat it and bias matching toward that exact wording.
+A skill spreads its content across three tiers, each paid for differently; put each piece where its frequency-of-need matches its cost.
+
+The **description** is all the agent sees when deciding whether to load the skill, so keep it tiny and tuned for matching. It has two readers: a sentence on what the skill does for the user, then a trigger clause for the agent — the range of verbs and contexts, "however loosely phrased" covering the variants. Third person, under 1024 chars; no quoted examples, which bias matching toward that wording.
+
+**SKILL.md** loads when the skill fires; keep it the always-relevant spine and no more.
+
+A **linked doc** (`[NAME.md](./NAME.md)`) loads only when the agent opens it, so split a piece out only when it is conditional, bulky boilerplate you copy rather than reason with, shared across skills, or a fuller version of something summarised inline — and never fragment the spine, since a doc the agent fails to open at the right moment is worse than inline.
+
+## Reviewing
+
+When asked to review or critique a skill, see [REVIEW.md](./REVIEW.md).
+
+## Simplifying
+
+When asked to simplify or compress a skill, see [SIMPLIFY.md](./SIMPLIFY.md).
