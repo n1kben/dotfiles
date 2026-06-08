@@ -23,10 +23,6 @@ A **linked doc** (`[NAME.md](./NAME.md)`) loads only when the agent opens it, so
 
 Prose is the default; structure is a cost the content has to earn. Reach for headings only when the skill is large enough that the reader holds several things at once — thematic `##` sections when order doesn't matter, numbered steps when the procedure is a genuine sequence the agent walks in order. A short skill needs neither: a `## Process` wrapped around three sentences is more frame than content, and the sequence already reads in the prose. Match the markup to the shape of the work, not to a wish to look organised.
 
-## Reviewing
-
-When asked to review or critique a skill, see [REVIEW.md](./REVIEW.md).
-
 ## Simplifying
 
 When asked to simplify or compress a skill, see [SIMPLIFY.md](./SIMPLIFY.md).
