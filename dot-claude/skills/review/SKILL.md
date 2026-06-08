@@ -1,6 +1,6 @@
 ---
 name: review
-description: Adversarial review of whatever's in front of you. Use when the user asks to review or critique something.
+description: Surface the real flaws in whatever's in front of you. Use whenever the user wants something reviewed, critiqued, audited, torn apart, or checked for problems — code, prose, a plan, a design — however loosely phrased.
 ---
 
 Review by fanning out, never in one pass.
@@ -11,7 +11,7 @@ Find the docs that set the standard — CLAUDE.md, AGENTS.md, READMEs, contribut
 
 ### 2. Fan out
 
-Spawn independent subagents concurrently, one per angle that fits the material — correctness, design, and conformance whenever something governs the work — each with a single remit, handing the scouted docs to the conformance one.
+Spawn independent subagents concurrently, one per angle that fits the material — correctness, bugs, design, and conformance whenever something governs the work — each with a single remit, handing the scouted docs to the conformance one.
 
 ### 3. Refute
 
