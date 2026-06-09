@@ -7,7 +7,7 @@ Review by fanning out, never in one pass.
 
 ### 1. Scout what governs the material
 
-Find the docs that set the standard — CLAUDE.md, AGENTS.md, READMEs, contributing guides, ADRs, the conventions of the surrounding code — so the review is grounded in how the material is meant to be done.
+Search wide for whatever sets the standard, wherever it lives — contributor and agent guides, READMEs and project docs, architecture decision records (ADRs), style and convention guides, and the conventions of the surrounding code. Scanning the repo's markdown is the fastest way to surface most of these; the rest live in the code itself. Ground the review in how the material is meant to be done.
 
 ### 2. Fan out
 
