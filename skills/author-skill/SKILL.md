@@ -13,7 +13,7 @@ A skill runs in a vacuum: the agent that runs it has none of the conversation yo
 
 A skill spreads its content across three tiers, each paid for differently; put each piece where its frequency-of-need matches its cost.
 
-The **description** is all the agent sees when deciding whether to load the skill, so keep it tiny and tuned for matching. It has two readers: a sentence on what the skill does for the user, then a trigger clause for the agent — the range of verbs and contexts, "however loosely phrased" covering the variants. Third person, under 1024 chars; no quoted examples, which bias matching toward that wording.
+The **description** is all the agent sees when deciding whether to load the skill, so keep it tiny and tuned for matching. Two parts: a sentence *describing* the skill — the activity it is and what it produces — then a trigger clause naming the verbs and contexts it fires on, with "however loosely phrased" covering the variants. A manually-invoked skill (`disable-model-invocation: true`) is never matched, so it needs only the describing sentence — drop the trigger clause. Describe the skill; don't instruct the agent — the imperative "do X" voice belongs in SKILL.md, and a description written that way just echoes the body's first line and blurs into any sibling that shares the procedure. Name the activity, often as a noun phrase, and keep it scannable — no em-dash asides, file paths, or editorial tails to dilute the signal. Third person, under 1024 chars, no quoted examples (they bias matching toward that wording).
 
 **SKILL.md** loads when the skill fires; keep it the always-relevant spine and no more.
 

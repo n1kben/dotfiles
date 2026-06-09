@@ -1,6 +1,6 @@
 ---
 name: teach
-description: Teach the user a new skill or concept, within this workspace.
+description: Teach the user a topic across multiple sessions, treating the current directory as a stateful learning workspace — grounding lessons in their mission, producing beautiful self-contained HTML lessons in their zone of proximal development, and tracking progress in learning records.
 disable-model-invocation: true
 argument-hint: "What would you like to learn about?"
 ---

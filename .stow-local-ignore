@@ -5,3 +5,5 @@ CLAUDE.md
 TODO.md
 README.md
 gitstage
+.DS_Store
+^/skills$
