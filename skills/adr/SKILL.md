@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Author and manage architecture decision records — capture a significant, hard-to-reverse decision and the reasoning behind it in the project's conventions, and supersede rather than rewrite when a decision changes. Trigger whenever the user wants to record, document, or revisit an architecture or design decision — write an ADR, capture why a choice was made, log a trade-off, or supersede a past decision — however loosely phrased.
+description: Author and manage architecture decision records — one record per significant, hard-to-reverse decision, capturing the forces that settled it and the alternatives weighed, superseded rather than rewritten when it changes. Trigger whenever the user wants to record, document, or revisit an architecture or design decision — write an ADR, capture why a choice was made, log a trade-off, or supersede a past decision — however loosely phrased.
 ---
 
 An ADR is written for a future developer looking at the code and wondering "why on earth did they do it this way?". Record _that_ a decision was made and _why_ — the forces that settled it, the alternatives weighed — and supersede rather than rewrite a record once the decision changes.

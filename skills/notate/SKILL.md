@@ -9,7 +9,7 @@ Examples — mirror their density and annotation, no more.
 
 Component tree — what nests (XML tags render, bare hooks hook in):
 
-```
+```ts
 <SessionsPageWrapper> (app — owns activeTab, sessions, drafts)
   useSessionsHotkeys (tab switch, cmd+n)
   <SessionsPage> (packages/ui — pure, props only)
@@ -22,7 +22,7 @@ Component tree — what nests (XML tags render, bare hooks hook in):
 
 Call tree — what runs top to bottom, → calls into, ↳ the branch that exits:
 
-```
+```ts
 POST /links (routes/links.ts)
   → LinkCatalog.create (core)
     → Store.insert (sql.ts)
@@ -32,7 +32,7 @@ POST /links (routes/links.ts)
 
 UX flow — screens in sequence, → leads to the next, (parens) what happens there, ↳ a branch off it, ?? a hole where it's undecided:
 
-```
+```ts
 Checkout (guest)
   → Cart (review items)
   → Shipping (enter address)
@@ -56,17 +56,17 @@ Draft
 
 Function interface — (positional)/{named} args, ? optional, ! effectful:
 
-```
+```js
 LinkCatalog
-  resolve (Slug) -> Result Link NotFound
-  rename (Slug, Url) -> Link
-  create { slug: Slug, target?: Url } -> Link
-  save! (Link) -> {}
+  resolve(Slug) -> Result Link NotFound
+  rename(Slug, Url) -> Link
+  create({ slug: Slug, target?: Url }) -> Link
+  save!(Link) -> {}
 ```
 
 Algebraic types — {record} with ? optional, | union mixing tagged variants and bare types, Result, List:
 
-```
+```ts
 Link =
   { slug: Slug
   , target: Url
@@ -82,7 +82,7 @@ Feed = List Link
 
 Tabular schema — fields and relations of a database, spreadsheet, or record set:
 
-```
+```sql
 users (table)
   id — uuid, primary key
   email — text, unique
@@ -95,7 +95,7 @@ links (table)
 
 API endpoints — a contract, METHOD path (body?) -> status Result, | alternative outcomes:
 
-```
+```ts
 links API (REST, JSON, bearer auth)
   POST /links ({ slug?, target }) -> 201 Link | 409 SlugTaken
   GET /links/:slug -> 200 Link | 404
@@ -105,7 +105,7 @@ links API (REST, JSON, bearer auth)
 
 Pseudocode — an algorithm, ← binds a name, → yields the result, : opens a block:
 
-```
+```ts
 resolve(slug):
   row ← store.lookup(slug)
   if none → NotFound
