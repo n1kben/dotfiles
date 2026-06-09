@@ -11,7 +11,7 @@ Search wide for whatever sets the standard, wherever it lives — contributor an
 
 ### 2. Fan out
 
-Spawn independent subagents concurrently, one per angle that fits the material — correctness, design, and conformance whenever something governs the material — each with a single remit, handing every one the scouted docs so each judges against the governing context rather than guesswork.
+Spawn independent subagents concurrently, one per angle that fits the material — correctness, design, and conformance whenever something governs the material, plus whatever else the material warrants such as security or bugs — each with a single remit, handing every one the scouted docs so each judges against the governing context rather than guesswork.
 
 ### 3. Refute
 
