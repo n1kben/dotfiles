@@ -1,6 +1,7 @@
 ---
 name: data-modelling
 description: Designs and critiques how information is represented — reducing concepts to their irreducible facts, separating fact from derived, catching models tangled with flags and statuses, and translating the result into a database schema, type system, application state, API payload, event log, form, or spreadsheet. Trigger whenever someone designs, reviews, or refactors a data model, schema, type, table, or state shape; asks what fields, columns, tables, or enums a thing needs; weighs whether something is one entity or two, a flag or its own thing, stored or computed; or senses a representation is tangled, duplicated, or hard to change — however loosely phrased.
+disable-model-invocation: true
 ---
 
 Resolve the user's model bottom-up — find the **facts**, build the graph from them, render the types last. Mine the code and domain yourself: state each fact you can already infer and move on, reserving questions for what's genuinely open, asked one at a time, each with a recommended answer.
