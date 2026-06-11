@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: A relentless interview to reach shared understanding. Use when the user wants to get grilled, or mentions "grill me".
+description: Grill until we reach shared understanding. Use when the user wants to get grilled, or mentions "grill me".
 ---
 
 Pick the one kind of grilling that fits what we're working on and read only that file — then follow it:

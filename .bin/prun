@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# prun — run commands in parallel (GNU parallel) with grouped output + a summary table.
+# Usage: prun 'cmd1' 'cmd2' ...   e.g.  prun 'pnpm lint' 'pnpm test' 'pnpm build'
+# Exit code = number of failed jobs (0 = all passed), so it composes in scripts/CI.
+set -uo pipefail
+
+if (( $# == 0 )); then
+  echo "usage: prun 'cmd1' 'cmd2' ..." >&2
+  exit 2
+fi
+if ! command -v parallel >/dev/null; then
+  echo "prun: GNU parallel not found (brew install parallel)" >&2
+  exit 127
+fi
+
+log=$(mktemp -t prun.XXXXXX) || exit 1
+trap 'rm -f "$log"' EXIT
+
+cmds=("$@")
+
+# -k keeps input order; each job prints a header then runs the raw command via bash -c.
+parallel -k --joblog "$log" \
+  'printf "\n\033[1;36m━━━━━ [{#}] \033[0;1m%s\033[0;1;36m ━━━━━\033[0m\n" {}; bash -c {}' \
+  ::: "$@"
+failed=$?
+
+# Summary from the joblog. Columns: Seq Host Start Runtime Send Recv Exitval Signal Command
+printf '\n\033[1mSummary\033[0m\n'
+while IFS=$'\t' read -r seq host start runtime send recv exitval signal rest; do
+  cmd="${cmds[$((seq - 1))]}"
+  if [[ "$exitval" == "0" ]]; then
+    printf '  \033[32m✓\033[0m %-5s %6ss  %s\n' "[$seq]" "$runtime" "$cmd"
+  else
+    printf '  \033[31m✗\033[0m %-5s %6ss  %s \033[31m(exit %s)\033[0m\n' "[$seq]" "$runtime" "$cmd" "$exitval"
+  fi
+done < <(tail -n +2 "$log" | sort -n)
+
+if (( failed == 0 )); then
+  printf '\033[32mAll %d jobs succeeded\033[0m\n' "${#cmds[@]}"
+else
+  printf '\033[31m%d of %d job(s) failed\033[0m\n' "$failed" "${#cmds[@]}"
+fi
+exit "$failed"
