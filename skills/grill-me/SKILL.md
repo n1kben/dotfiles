@@ -1,10 +1,11 @@
 ---
 name: grill-me
-description: A relentless interview that walks every branch of a plan or design to shared understanding, resolving each decision in turn. Use when the user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
+description: A relentless interview to reach shared understanding. Use when the user wants to get grilled, or mentions "grill me".
 ---
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+Pick the one kind of grilling that fits what we're working on and read only that file — then follow it:
 
-If a question can be answered by exploring the codebase, explore the codebase instead.
-
-Keep it conversational that is short and to the point.
+- A plan or implementation approach → [PLANNING.md](./PLANNING.md)
+- An API or interface → [API-DESIGN.md](./API-DESIGN.md)
+- A schema or data model → [DATA-MODELLING.md](./DATA-MODELLING.md)
+- A domain model — its terms and their meanings → [DOMAIN-MODELLING.md](./DOMAIN-MODELLING.md)
