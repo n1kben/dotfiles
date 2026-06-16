@@ -16,3 +16,4 @@ export PATH="$VOLTA_HOME/bin:$PATH"
 
 
 eval "$(/opt/homebrew/bin/brew shellenv)"
+source "$HOME/.cargo/env"

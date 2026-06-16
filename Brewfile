@@ -45,6 +45,8 @@ brew "postgresql@14", restart_service: :changed
 brew "python@3.13"
 # Search tool like grep and The Silver Searcher
 brew "ripgrep"
+# Semantic version control CLI with entity-level diffs and blame
+brew "sem-cli", link: false
 # Organize software neatly under a single directory tree (e.g. /usr/local)
 brew "stow"
 # Terminal multiplexer
