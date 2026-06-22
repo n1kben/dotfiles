@@ -21,6 +21,8 @@ brew "gh"
 brew "git"
 # Syntax-highlighting pager for git and diff output
 brew "git-delta"
+# Quickly rewrite git repository history
+brew "git-filter-repo"
 # Render markdown on the CLI
 brew "glow"
 # Open source programming language to build simple/reliable/efficient software
@@ -73,4 +75,6 @@ cask "font-sauce-code-pro-nerd-font"
 # Terminal OpenAPI Spec viewer
 cask "plutov/tap/oq"
 go "gitstage"
+cargo "inspect-cli"
 npm "corepack"
+npm "vercel"
