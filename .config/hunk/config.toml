@@ -1,0 +1,9 @@
+theme = "auto"
+mode = "auto"        # auto, split, stack
+vcs = "git"          # git, jj, sl
+watch = true
+exclude_untracked = false
+line_numbers = true
+wrap_lines = false
+agent_notes = false
+transparent_background = false
