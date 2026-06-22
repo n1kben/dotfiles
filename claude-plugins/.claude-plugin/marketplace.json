@@ -1,0 +1,13 @@
+{
+  "name": "dotfiles",
+  "owner": {
+    "name": "n1kben"
+  },
+  "plugins": [
+    {
+      "name": "git-guard",
+      "source": "./git-guard",
+      "description": "Blocks `git commit --no-verify` / `-n` via a PreToolUse hook so pre-commit hooks can't be silently bypassed."
+    }
+  ]
+}
