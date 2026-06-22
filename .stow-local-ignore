@@ -5,7 +5,7 @@ claude-plugins
 .githooks
 .gitignore
 .claude
-CLAUDE.md
+^/CLAUDE.md$
 TODO.md
 README.md
 gitstage
