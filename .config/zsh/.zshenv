@@ -6,7 +6,9 @@ export EDITOR=nvim
 export MANPAGER="nvim +Man!"
 export GIT_MERGE_AUTOEDIT=no
 
-export DOTFILES="$HOME/.files"
+# Self-locating: resolve this file's real path (through the stow symlink) and
+# climb to the repo root, so DOTFILES is correct wherever the repo is cloned.
+export DOTFILES="${${(%):-%x}:A:h:h:h}"
 export VOLTA_HOME="$HOME/.volta"
 
 export PATH="$HOME/go/bin:$PATH"

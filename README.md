@@ -10,21 +10,25 @@ Personal dotfiles managed with GNU Stow and Homebrew.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-2. Clone this repository to your home directory:
+2. Clone this repository (location-independent — anywhere works):
 
 ```bash
-git clone <repository-url> ~/.files
-cd ~/.files
+git clone <repository-url> ~/Developer/n1kben/dotfiles
+cd ~/Developer/n1kben/dotfiles
 ```
 
 3. Install the Homebrew packages defined in the Brewfile:
 
 ```bash
-brew bundle --file ~/.files/Brewfile
+make brew
 ```
 
-4. Use stow to symlink the dotfiles:
+4. Symlink the dotfiles into `$HOME`:
 
 ```bash
-stow .
+make install
 ```
+
+`make install` computes the repo's location at runtime, so stow always targets
+`$HOME` regardless of where this repo was cloned. Run `make help` for all
+targets (`install`, `unstow`, `brew`).

@@ -1,4 +1,5 @@
 Brewfile
+Makefile
 claude-plugins
 .git
 .githooks
