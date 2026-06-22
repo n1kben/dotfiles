@@ -1,5 +1,8 @@
 Brewfile
+claude-plugins
 .git
+.githooks
+.gitignore
 .claude
 CLAUDE.md
 TODO.md
