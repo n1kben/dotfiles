@@ -75,10 +75,10 @@ export FZF_DEFAULT_OPTS="--color 16 --reverse"
 # ctrl+t to paste file
 # ctrl+r for history
 
-source ~/.fzf-git.sh
+source ~/.config/zsh/fzf-git.sh
 # ctrl+g ?
 
-source ~/.fzf-brew.sh
+source ~/.config/zsh/fzf-brew.sh
 # ctrl+b ?
 
 
@@ -148,7 +148,7 @@ mkcd() { mkdir -p "$1" && cd "$1" }
 # ----------------------------
 
 alias c="clear"
-alias r="source ~/.zshenv && source ~/.zprofile && source ~/.zshrc"
+alias r="source \${ZDOTDIR:-\$HOME}/.zshenv && source \${ZDOTDIR:-\$HOME}/.zprofile && source \${ZDOTDIR:-\$HOME}/.zshrc"
 
 
 # History

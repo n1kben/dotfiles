@@ -11,7 +11,6 @@
 [push]
   default = simple
 [core]
-  excludesfile = ~/.gitignore-global
   fileMode = false
   editor = nvim
   pager = hunk pager
@@ -24,3 +23,13 @@
   sort = -committerdate
 [merge]
   conflictStyle = zdiff3
+[fetch]
+  prune = true
+[pull]
+  rebase = true
+[diff]
+  algorithm = histogram
+[rebase]
+  autostash = true
+[column]
+  ui = auto
