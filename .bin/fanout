@@ -14,12 +14,14 @@
 # The per-job header is merged into the divider line; the time is right-aligned.
 # A failed job uses a heavy (═) divider so it stands out at a glance.
 #
-# Note: a process a job backgrounds itself (`... &`) is not awaited, so its later
-# output is not captured. Ctrl-C tears down all jobs (and such grandchildren).
+# Each command runs to completion and all of its output is captured. The one
+# exception is a sub-process a command *detaches* with `&` (fire-and-forget):
+# like any shell, we don't wait for it, so its later output may not be captured.
+# Ctrl-C still tears everything down, including such detached grandchildren.
 
 set -u
-# Force a UTF-8 locale so ${#s} counts characters (not bytes) for the box-drawing
-# glyphs; LC_ALL outranks LANG, so set both when unset or the divider math drifts.
+# Default to a UTF-8 locale when none is set, so jobs and output are UTF-8-clean.
+# (The width math is independently re-forced to UTF-8 before printing, below.)
 export LC_ALL=${LC_ALL:-C.UTF-8} LANG=${LANG:-C.UTF-8}
 
 usage() {
@@ -91,6 +93,11 @@ for ((i=0; i<n; i++)); do
   } &
 done
 wait
+
+# The jobs have all run with the caller's own locale; now force a UTF-8 locale
+# for our own width math (no export) so the dividers stay aligned even if the
+# caller exported a non-UTF-8 LC_ALL/LC_CTYPE. Doesn't affect the jobs.
+LC_ALL=C.UTF-8 LANG=C.UTF-8
 
 # ---- print results strictly in input order ----
 ok=0; failed=0; fails=""
