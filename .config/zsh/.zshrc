@@ -46,24 +46,8 @@ grm() {
 
 # GitHub
 # ----------------------------
-# Per-folder account for the `gh` CLI: walk up from $PWD to the nearest
-# ancestor containing a `.gh/` config dir and use it. If none is found, fail
-# loudly rather than silently using the wrong account. An explicit
-# GH_CONFIG_DIR in the environment is honored as-is (e.g. for first login).
-# Tip: put a `.gh/` at $HOME if you want a catch-all default account.
-gh() {
-  [[ -n $GH_CONFIG_DIR ]] && { command gh "$@"; return; }
-  local dir=$PWD
-  while [[ $dir != / ]]; do
-    if [[ -f $dir/.gh/hosts.yml ]]; then
-      GH_CONFIG_DIR=$dir/.gh command gh "$@"
-      return
-    fi
-    dir=${dir:h}   # parent directory (zsh :h modifier)
-  done
-  print -u2 "gh: no .gh config dir found in $PWD or any parent directory"
-  return 1
-}
+# The per-folder `gh()` wrapper now lives in .zshenv so non-interactive
+# shells (e.g. tools that run `zsh -c`) pick the right account too.
 
 
 # FZF
