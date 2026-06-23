@@ -27,6 +27,8 @@ brew "git-filter-repo"
 brew "glow"
 # Open source programming language to build simple/reliable/efficient software
 brew "go"
+# Agent multiplexer that lives in your terminal
+brew "herdr"
 # Git-compatible distributed version control system
 brew "jj"
 # Lightweight and flexible command-line JSON processor
@@ -77,4 +79,3 @@ cask "plutov/tap/oq"
 go "gitstage"
 cargo "inspect-cli"
 npm "corepack"
-npm "vercel"
