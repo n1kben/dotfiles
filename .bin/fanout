@@ -13,6 +13,9 @@
 #
 # The per-job header is merged into the divider line; the time is right-aligned.
 # A failed job uses a heavy (═) divider so it stands out at a glance.
+#
+# Note: a process a job backgrounds itself (`... &`) is not awaited, so its later
+# output is not captured. Ctrl-C tears down all jobs (and such grandchildren).
 
 set -u
 # Force a UTF-8 locale so ${#s} counts characters (not bytes) for the box-drawing
@@ -47,7 +50,8 @@ esac
 
 n=$#
 W=62
-work=$(mktemp -d "${TMPDIR:-/tmp}/fanout.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/fanout.XXXXXX") ||
+  { echo 'fanout: could not create temp dir (check $TMPDIR)' >&2; exit 1; }
 trap 'rm -rf "$work"' EXIT
 # Background jobs ignore SIGINT in a non-interactive shell, so a bare Ctrl-C would
 # orphan them. On interrupt, tear down the whole process group (children and any
@@ -102,7 +106,12 @@ for ((i=0; i<n; i++)); do
     fails="$fails  ✗ [$((i+1))] ${label:-$(trunc "$cmd" 44)} — exit $code"$'\n'
   fi
 
-  titlerule "$fc$fc $glyph [$((i+1))/$n] ${label:+$label }" "$right" "$fc"
+  pre="$fc$fc $glyph [$((i+1))/$n] "
+  if [ -n "$label" ]; then                       # truncate label so the rule fits W
+    room=$(( W - ${#pre} - ${#right} - 2 )); ((room<1))&&room=1
+    pre="$pre$(trunc "$label" "$room") "
+  fi
+  titlerule "$pre" "$right" "$fc"
   printf '$ %s\n' "$cmd"
   if [ -s "$work/out.$i" ]; then
     cat "$work/out.$i"
