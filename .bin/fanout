@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# fanout — run commands in parallel, print their output in order, cleanly.
+#
+# Usage:
+#   fanout "cmd 1" "cmd 2" "cmd 3"
+#   fanout "build::npm run build" "test::npm test"   # optional label:: prefix
+#
+# All commands run at once (each via `bash -c`); output is grouped per command
+# and printed in the order given, regardless of finish order. Each job is
+# identified by its number, plus an optional label given as a `name::` prefix
+# on the command. Plain text, no ANSI color, so captured output stays clean
+# inside Claude Code.
+#
+# The per-job header is merged into the divider line; the time is right-aligned.
+# A failed job uses a heavy (═) divider so it stands out at a glance.
+
+set -u
+# Force a UTF-8 locale so ${#s} counts characters (not bytes) for the box-drawing
+# glyphs; LC_ALL outranks LANG, so set both when unset or the divider math drifts.
+export LC_ALL=${LC_ALL:-C.UTF-8} LANG=${LANG:-C.UTF-8}
+
+usage() {
+  cat <<'EOF'
+fanout — run commands in parallel, print their output in order, cleanly.
+
+Usage:
+  fanout "cmd 1" "cmd 2" "cmd 3"
+  fanout "build::npm run build" "test::npm test"
+  fanout -h | --help
+
+All commands run at once (each via `bash -c`); output is grouped per command
+and printed in the order given, regardless of finish order. Each job is
+identified by its number. Prefix a command with `name::` to label it, e.g.
+"build::npm run build". Plain text, no ANSI color, so captured output stays
+clean inside Claude Code.
+
+A failed job uses a heavy (═) divider so it stands out at a glance. fanout
+exits non-zero if any job fails.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+esac
+
+[ "$#" -eq 0 ] && { echo 'usage: fanout "cmd" ["cmd" ...]' >&2; exit 2; }
+
+n=$#
+W=62
+work=$(mktemp -d "${TMPDIR:-/tmp}/fanout.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+# Background jobs ignore SIGINT in a non-interactive shell, so a bare Ctrl-C would
+# orphan them. On interrupt, tear down the whole process group (children and any
+# grandchildren they spawned, since all share our pgid) before exiting.
+trap 'rm -rf "$work"; trap - INT TERM; kill 0' INT TERM
+
+# ---- parse args once into parallel arrays: an optional `name::` prefix is the
+# label (name must be a plain token), the rest is the command actually run ----
+labels=(); cmds=()
+for arg in "$@"; do
+  label=''; cmd=$arg
+  if [ "$arg" != "${arg#*::}" ]; then          # contains '::'
+    head=${arg%%::*}
+    case "$head" in
+      ''|*[!A-Za-z0-9_-]*) ;;                   # not a clean token → no label
+      *) label=$head; cmd=${arg#*::} ;;
+    esac
+  fi
+  labels+=("$label"); cmds+=("$cmd")
+done
+
+rep()   { local c=$1 w=$2 k s=''; ((w<0))&&w=0; for ((k=0;k<w;k++)); do s="$s$c"; done; printf '%s' "$s"; }
+trunc() { local s=$1 m=$2; if [ "${#s}" -gt "$m" ]; then printf '%s…' "${s:0:m-1}"; else printf '%s' "$s"; fi; }
+center(){ local t=$1 c=$2; local pad=$(( (W-${#t}-2)/2 )); ((pad<1))&&pad=1
+          printf '%s %s %s\n' "$(rep "$c" "$pad")" "$t" "$(rep "$c" $((W-pad-${#t}-2)))"; }
+# title merged into a rule: left text + fill + right text, total width W
+titlerule(){ local l=$1 r=$2 c=$3; local f=$(( W-${#l}-${#r} )); ((f<1))&&f=1
+             printf '%s%s%s\n' "$l" "$(rep "$c" "$f")" "$r"; }
+
+# ---- launch every command in parallel into its own capture files ----
+for ((i=0; i<n; i++)); do
+  {
+    start=$(date +%s)
+    bash -c "${cmds[i]}" >"$work/out.$i" 2>"$work/err.$i"
+    echo $? >"$work/code.$i"
+    echo $(( $(date +%s) - start )) >"$work/time.$i"
+  } &
+done
+wait
+
+# ---- print results strictly in input order ----
+ok=0; failed=0; fails=""
+for ((i=0; i<n; i++)); do
+  cmd=${cmds[i]}; label=${labels[i]}
+  code=$(cat "$work/code.$i" 2>/dev/null || echo '?')
+  secs=$(cat "$work/time.$i" 2>/dev/null || echo '?')
+
+  if [ "$code" = "0" ]; then
+    fc='─'; glyph='✓'; right=" ${secs}s ──"; ok=$((ok+1))
+  else
+    fc='═'; glyph='✗'; right=" exit $code · ${secs}s ══"; failed=$((failed+1))
+    fails="$fails  ✗ [$((i+1))] ${label:-$(trunc "$cmd" 44)} — exit $code"$'\n'
+  fi
+
+  titlerule "$fc$fc $glyph [$((i+1))/$n] ${label:+$label }" "$right" "$fc"
+  printf '$ %s\n' "$cmd"
+  if [ -s "$work/out.$i" ]; then
+    cat "$work/out.$i"
+    # add a newline if stdout didn't end in one, so the next line never glues on
+    [ -n "$(tail -c1 "$work/out.$i")" ] && printf '\n'
+  else printf '(no output)\n'; fi
+  [ -s "$work/err.$i" ] && { printf 'stderr:\n'; cat "$work/err.$i"; }
+  printf '\n'
+done
+
+# ---- end banner + failures list (for easy retry); exit non-zero on any failure ----
+if [ "$failed" -eq 0 ]; then center "$ok ok · $n total" '═'
+else center "$ok ok · $failed failed · $n total" '═'; printf '%s' "$fails"; fi
+
+[ "$failed" -eq 0 ]
