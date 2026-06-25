@@ -5,9 +5,8 @@ claude-plugins
 .githooks
 .gitignore
 .claude
-^/CLAUDE.md$
+^/claude$
 TODO.md
 README.md
 gitstage
 .DS_Store
-^/skills$

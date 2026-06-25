@@ -32,3 +32,8 @@ make install
 `make install` computes the repo's location at runtime, so stow always targets
 `$HOME` regardless of where this repo was cloned. Run `make help` for all
 targets (`install`, `unstow`, `brew`).
+
+## Claude config
+
+Claude's global instructions live in `claude/CLAUDE.md`, and `make install`
+symlinks them to `~/.claude/CLAUDE.md`.

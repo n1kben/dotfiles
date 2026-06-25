@@ -103,13 +103,9 @@ export CDPATH=.:~/.marks
 mkdir -p ~/.marks
 
 mark() {
-  [ -z "$1" ] && { echo "usage: mark <name>"; return 1; }
+  [ -z "$1" ] && { echo "usage: mark @<name>"; return 1; }
+  [[ "$1" != @* ]] && { echo "mark: name must start with @ (e.g. mark @$1)"; return 1; }
   ln -sn "$(pwd)" ~/.marks/"$1"
-}
-marks() {
-  local dest
-  dest=$(ls ~/.marks | fzf) || return
-  cd ~/.marks/"$dest"
 }
 
 
