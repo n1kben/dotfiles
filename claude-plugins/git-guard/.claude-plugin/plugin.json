@@ -1,8 +1,0 @@
-{
-  "name": "git-guard",
-  "version": "0.1.0",
-  "description": "Blocks `git commit --no-verify` / `-n` via a PreToolUse hook so pre-commit hooks can't be silently bypassed.",
-  "author": {
-    "name": "n1kben"
-  }
-}
