@@ -1,3 +1,5 @@
+tap "ariga/tap"
+tap "ataraxy-labs/tap", trusted: { formulae: ["inspect"] }
 tap "encoredev/tap"
 tap "modem-dev/tap"
 tap "plutov/tap"
@@ -27,8 +29,6 @@ brew "git-filter-repo"
 brew "glow"
 # Open source programming language to build simple/reliable/efficient software
 brew "go"
-# Agent multiplexer that lives in your terminal
-brew "herdr"
 # Git-compatible distributed version control system
 brew "jj"
 # Lightweight and flexible command-line JSON processor
@@ -71,6 +71,8 @@ brew "zig"
 brew "zsh-autosuggestions"
 # Fish shell like syntax highlighting for zsh
 brew "zsh-syntax-highlighting"
+# A database toolkit
+brew "ariga/tap/atlas", trusted: true
 # Command-line interface for 1Password
 cask "1password-cli"
 cask "font-sauce-code-pro-nerd-font"
@@ -79,3 +81,4 @@ cask "plutov/tap/oq"
 go "gitstage"
 cargo "inspect-cli"
 npm "corepack"
+npm "vercel"
