@@ -69,7 +69,11 @@ async function refreshBackgroundStatus(ctx: ExtensionContext, prefix = SESSION_P
 	if (!ctx.hasUI) return;
 	const status = formatBackgroundStatus(await listBackgroundSessions(prefix), prefix);
 	ctx.ui.setStatus("background", status);
-	ctx.ui.setWidget("background", status ? [`${status}  (/bg for details)`] : undefined);
+	const widgetStatus = status?.replace(/^bg: /, "");
+	ctx.ui.setWidget(
+		"background",
+		widgetStatus ? [`${widgetStatus}  ${ctx.ui.theme.fg("muted", "(/bg for details)")}`] : undefined,
+	);
 }
 
 export default function (pi: ExtensionAPI) {
