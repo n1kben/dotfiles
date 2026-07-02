@@ -11,10 +11,14 @@ brew "bat"
 brew "btop"
 # GNU File, Shell, and Text utilities
 brew "coreutils"
+# Emulates the detach feature of screen
+brew "dtach"
 # Perl lib for reading and writing EXIF metadata
 brew "exiftool"
 # Simple, fast and user-friendly alternative to find
 brew "fd"
+# Play, record, convert, and stream select audio and video codecs
+brew "ffmpeg"
 # Command-line fuzzy finder written in Go
 brew "fzf"
 # GitHub command-line tool
@@ -65,6 +69,8 @@ brew "volta"
 brew "watchman"
 # Blazing fast terminal file manager written in Rust, based on async I/O
 brew "yazi"
+# Feature-rich command-line audio/video downloader
+brew "yt-dlp"
 # Programming language designed for robustness, optimality, and clarity
 brew "zig"
 # Fish-like fast/unobtrusive autosuggestions for zsh
@@ -78,6 +84,8 @@ cask "1password-cli"
 cask "font-sauce-code-pro-nerd-font"
 # Terminal OpenAPI Spec viewer
 cask "plutov/tap/oq"
+# React client for Simplenote
+cask "simplenote"
 go "gitstage"
 cargo "inspect-cli"
 npm "corepack"
