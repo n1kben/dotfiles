@@ -230,14 +230,19 @@ export default function (pi: ExtensionAPI) {
 
             const badge = ` ${prompts.length} `;
             const gap = " ";
-            const reserveWidth = badge.length + gap.length;
+            const reserveWidth = badge.length + gap.length * 2;
             const editorWidth = Math.max(1, width - reserveWidth);
             const lines = super.render(editorWidth);
             const targetLine = lines.length > 2 ? 1 : 0;
 
-            return lines.map((line, index) =>
-              index === targetLine ? `${line}${gap}\x1b[7m${badge}\x1b[0m` : `${line}${" ".repeat(reserveWidth)}`,
-            );
+            const borderContinuation = theme.borderColor("─".repeat(reserveWidth));
+            const bottomBorderLine = Math.min(lines.length - 1, targetLine + 1 + this.getLines().length);
+
+            return lines.map((line, index) => {
+              if (index === 0 || index === bottomBorderLine) return `${line}${borderContinuation}`;
+              if (index === targetLine) return `${line}${gap}\x1b[7m${badge}\x1b[0m${gap}`;
+              return `${line}${" ".repeat(reserveWidth)}`;
+            });
           }
 
           handleInput(data: string): void {
