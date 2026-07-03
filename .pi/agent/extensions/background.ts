@@ -11,16 +11,51 @@ function backgroundPrompt(): string {
 
 type BackgroundSession = { name: string; created: number };
 
-async function captureSession(name: string): Promise<string> {
-	const { stdout } = await execFileAsync("tmux", ["capture-pane", "-pt", name, "-S", "-"], {
-		timeout: 2000,
-		maxBuffer: 1024 * 1024,
-	});
-	return stdout;
-}
-
 async function killSession(name: string): Promise<void> {
 	await execFileAsync("tmux", ["kill-session", "-t", name], { timeout: 2000 });
+}
+
+function shellQuote(text: string): string {
+	return `'${text.replaceAll("'", `'\\''`)}'`;
+}
+
+async function copyToClipboard(text: string): Promise<void> {
+	if (process.platform === "darwin") {
+		await execFileAsync("pbcopy", { input: text });
+		return;
+	}
+
+	if (process.platform === "win32") {
+		await execFileAsync("clip", { input: text });
+		return;
+	}
+
+	if (process.env.TERMUX_VERSION) {
+		await execFileAsync("termux-clipboard-set", { input: text });
+		return;
+	}
+
+	if (process.env.WAYLAND_DISPLAY) {
+		await execFileAsync("wl-copy", { input: text });
+		return;
+	}
+
+	await execFileAsync("xclip", ["-selection", "clipboard"], { input: text });
+}
+
+async function openSession(session: string): Promise<"popup" | "copied"> {
+	const command = `tmux attach-session -t ${shellQuote(session)}`;
+	if (process.env.TMUX) {
+		await execFileAsync(
+			"tmux",
+			["display-popup", "-T", `bg: ${session}`, "-E", "-w", "90%", "-h", "90%", command],
+			{ timeout: 2000 },
+		);
+		return "popup";
+	}
+
+	await copyToClipboard(command);
+	return "copied";
 }
 
 async function listTmuxSessions(): Promise<Set<string>> {
@@ -159,11 +194,11 @@ export default function (pi: ExtensionAPI) {
 			if (!session) return;
 
 			try {
-				const content = await captureSession(session);
-				await ctx.ui.editor(`bg: ${session}`, content);
+				const result = await openSession(session);
+				if (result === "copied") ctx.ui.notify(`Copied: tmux attach-session -t ${shellQuote(session)}`, "info");
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
-				ctx.ui.notify(`Failed to capture ${session}: ${message}`, "error");
+				ctx.ui.notify(`Failed to open ${session}: ${message}`, "error");
 			} finally {
 				await refreshBackgroundStatus(ctx, trackedSessions);
 			}
