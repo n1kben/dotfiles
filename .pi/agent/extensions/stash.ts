@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { CustomEditor, type ExtensionAPI, type ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
+import { matchesKey } from "@earendil-works/pi-tui";
 
 type StashedPrompt = {
   id: string;
@@ -226,13 +226,18 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.setEditorComponent((tui, theme, keybindings) => {
         return new class extends CustomEditor {
           render(width: number): string[] {
-            const lines = super.render(width);
-            if (prompts.length === 0 || width < 5) return lines;
+            if (prompts.length === 0 || width < 5) return super.render(width);
 
             const badge = ` ${prompts.length} `;
+            const gap = " ";
+            const reserveWidth = badge.length + gap.length;
+            const editorWidth = Math.max(1, width - reserveWidth);
+            const lines = super.render(editorWidth);
             const targetLine = lines.length > 2 ? 1 : 0;
-            lines[targetLine] = `${truncateToWidth(lines[targetLine] ?? "", width - badge.length, "", true)}\x1b[7m${badge}\x1b[0m`;
-            return lines;
+
+            return lines.map((line, index) =>
+              index === targetLine ? `${line}${gap}\x1b[7m${badge}\x1b[0m` : `${line}${" ".repeat(reserveWidth)}`,
+            );
           }
 
           handleInput(data: string): void {
