@@ -55,22 +55,16 @@ async function listBackgroundSessions(trackedSessions: Set<string>): Promise<str
 	return [...trackedSessions].sort((a, b) => a.localeCompare(b));
 }
 
-function formatBackgroundStatus(sessions: string[]): string | undefined {
-	if (sessions.length === 0) return undefined;
-	const shown = sessions.slice(0, 3).join(", ");
-	const extra = sessions.length > 3 ? ` +${sessions.length - 3}` : "";
-	return `bg: ${shown}${extra}`;
+function formatBackgroundStatus(count: number, ctx: ExtensionContext): string | undefined {
+	if (count === 0) return undefined;
+	return ctx.ui.theme.fg("accent", `${count} bg`);
 }
 
 async function refreshBackgroundStatus(ctx: ExtensionContext, trackedSessions: Set<string>) {
 	if (!ctx.hasUI) return;
-	const status = formatBackgroundStatus(await listBackgroundSessions(trackedSessions));
+	const sessions = await listBackgroundSessions(trackedSessions);
+	const status = formatBackgroundStatus(sessions.length, ctx);
 	ctx.ui.setStatus("background", status);
-	const widgetStatus = status?.replace(/^bg: /, "");
-	ctx.ui.setWidget(
-		"background",
-		widgetStatus ? [`${widgetStatus}  ${ctx.ui.theme.fg("muted", "(/bg for details)")}`] : undefined,
-	);
 }
 
 function shellWords(command: string): string[] {
@@ -149,24 +143,6 @@ export default function (pi: ExtensionAPI) {
 		trackedSessions.clear();
 	}
 
-	async function confirmAndKillTrackedSessions(ctx: ExtensionContext, action: string): Promise<boolean> {
-		const sessions = await listBackgroundSessions(trackedSessions);
-		if (sessions.length === 0) return true;
-		if (!ctx.hasUI) {
-			await killTrackedSessions();
-			return true;
-		}
-
-		const confirmed = await ctx.ui.confirm(
-			`${action}?`,
-			`This will kill ${sessions.length} tracked tmux background session(s):\n\n${sessions.join("\n")}\n\nContinue?`,
-		);
-		if (!confirmed) return false;
-		await killTrackedSessions();
-		await refreshBackgroundStatus(ctx, trackedSessions);
-		return true;
-	}
-
 	pi.registerCommand("bg", {
 		description: "View tracked tmux background sessions",
 		handler: async (_args, ctx) => {
@@ -217,19 +193,6 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("message_end", async () => refresh?.());
 	pi.on("turn_end", async () => refresh?.());
-
-	pi.on("session_before_switch", async (event, ctx) => {
-		const confirmed = await confirmAndKillTrackedSessions(
-			ctx,
-			event.reason === "new" ? "Start a new session" : "Resume another session",
-		);
-		return confirmed ? undefined : { cancel: true };
-	});
-
-	pi.on("session_before_fork", async (_event, ctx) => {
-		const confirmed = await confirmAndKillTrackedSessions(ctx, "Fork this session");
-		return confirmed ? undefined : { cancel: true };
-	});
 
 	pi.on("session_shutdown", async (event, ctx) => {
 		if (interval) clearInterval(interval);
