@@ -9,15 +9,10 @@ STOW   := stow --dotfiles --target=$(HOME) --dir=$(PARENT)
 
 .PHONY: install unstow brew help
 
-PI_AGENT := $(HOME)/.pi/agent
-PI_SYNC_PATHS := extensions keybindings.json prompts settings.json themes
-
 help: ## Show available targets
 	@grep -E '^[a-z][a-zA-Z-]*:.*##' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/'
 
-install: ## Symlink dotfiles into $HOME, link Claude and Pi config, refresh @dotfiles mark
-	@mkdir -p $(PI_AGENT)
-	@for path in $(PI_SYNC_PATHS); do rm -rf "$(PI_AGENT)/$$path"; done
+install: ## Symlink dotfiles into $HOME, link Claude config, refresh @dotfiles mark
 	$(STOW) --restow $(PKG)
 	@mkdir -p $(HOME)/.claude
 	ln -sfn "$(DIR)/claude/CLAUDE.md" "$(HOME)/.claude/CLAUDE.md"
