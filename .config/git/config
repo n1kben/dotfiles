@@ -13,7 +13,6 @@
 [core]
   fileMode = false
   editor = nvim
-  pager = hunk pager
 [init]
   defaultBranch = main
 [rerere]
