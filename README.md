@@ -37,3 +37,8 @@ targets (`install`, `unstow`, `brew`).
 
 Claude's global instructions live in `claude/CLAUDE.md`, and `make install`
 symlinks them to `~/.claude/CLAUDE.md`.
+
+## Pi config
+
+Pi configuration is not in this repo. It lives in `n1kben/pi`, which links its
+extensions, prompts, themes, keybindings, and settings into `~/.pi/agent`.
