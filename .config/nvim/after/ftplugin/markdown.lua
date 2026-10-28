@@ -1,5 +1,6 @@
 vim.opt_local.wrap = true
 vim.opt_local.linebreak = true
+vim.opt_local.breakindent = true
 vim.opt_local.conceallevel = 0
 vim.opt_local.concealcursor = "ncv"
 vim.opt_local.expandtab = true
@@ -36,21 +37,24 @@ local function update_date_labels()
   vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
 
   for line_nr, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
-    local col = 1
-    while true do
-      local start_pos, end_pos = line:find("%d%d%d%d%-%d%d%-%d%d", col)
-      if not start_pos then break end
+    -- inline virt_text shifts table cells out of alignment, so skip table rows
+    if not line:match("^%s*|") then
+      local col = 1
+      while true do
+        local start_pos, end_pos = line:find("%d%d%d%d%-%d%d%-%d%d", col)
+        if not start_pos then break end
 
-      local date_str = line:sub(start_pos, end_pos)
-      local relative_date = get_relative_date(date_str)
-      if relative_date then
-        vim.api.nvim_buf_set_extmark(0, ns, line_nr - 1, end_pos, {
-          virt_text = { { " (" .. relative_date .. ")", "Comment" } },
-          virt_text_pos = "inline",
-        })
+        local date_str = line:sub(start_pos, end_pos)
+        local relative_date = get_relative_date(date_str)
+        if relative_date then
+          vim.api.nvim_buf_set_extmark(0, ns, line_nr - 1, end_pos, {
+            virt_text = { { " (" .. relative_date .. ")", "Comment" } },
+            virt_text_pos = "inline",
+          })
+        end
+
+        col = end_pos + 1
       end
-
-      col = end_pos + 1
     end
   end
 end
