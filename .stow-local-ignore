@@ -3,8 +3,6 @@ Makefile
 .git
 .githooks
 .gitignore
-.claude
-^/claude$
 TODO.md
 README.md
 gitstage

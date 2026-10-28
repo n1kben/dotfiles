@@ -33,12 +33,10 @@ make install
 `$HOME` regardless of where this repo was cloned. Run `make help` for all
 targets (`install`, `unstow`, `brew`).
 
-## Claude config
+## Agent configuration
 
-Claude's global instructions live in `claude/CLAUDE.md`, and `make install`
-symlinks them to `~/.claude/CLAUDE.md`.
+Agent instructions and skills are not in this repo. They live in `n1kben/agents`,
+which symlinks `AGENTS.global.md` to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`.
 
-## Pi config
-
-Pi configuration is not in this repo. It lives in `n1kben/pi`, which links its
-extensions, prompts, themes, keybindings, and settings into `~/.pi/agent`.
+Pi configuration lives in `n1kben/pi`, which links its extensions, themes,
+keybindings, and settings into `~/.pi/agent`.
